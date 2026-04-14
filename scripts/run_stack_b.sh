@@ -34,7 +34,7 @@ elif [ -f "$PROJECT_DIR/.venv/bin/activate" ]; then
 fi
 
 # Set PYTHONPATH for src imports
-export PYTHONPATH="${PROJECT_DIR}${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="${PROJECT_DIR}/src:${PYTHONPATH:+:$PYTHONPATH}"
 
 echo "========================================"
 echo "  GlitchHunter - Stack B (RTX 3090)    "
@@ -45,9 +45,13 @@ echo ""
 export GLITCHHUNTER_STACK="stack_b"
 export GLITCHHUNTER_MODE="parallel"
 
-# Model paths
+# Model paths (local)
 export MODEL_ANALYZER="$PROJECT_DIR/models/qwen3.5-27b-instruct-q4_k_m.gguf"
 export MODEL_VERIFIER="$PROJECT_DIR/models/deepseek-v3.2-small-q4_k_m.gguf"
+
+# Remote LLM server (optional)
+# Set MODEL_API_URL to use a remote OpenAI-compatible server
+export MODEL_API_URL="${MODEL_API_URL:-http://localhost:8080/v1}"
 
 # Check models exist
 if [ ! -f "$MODEL_ANALYZER" ]; then
@@ -61,6 +65,8 @@ if [ ! -f "$MODEL_VERIFIER" ]; then
     echo "Run: python scripts/download_models.py --stack-b"
     exit 1
 fi
+
+echo "Using LLM API: $MODEL_API_URL"
 
 echo "Hardware Profile: Stack B (RTX 3090, 24GB)"
 echo "Execution Mode: Parallel"
@@ -96,6 +102,98 @@ echo "  GPU Layers: $LLAMA_CPP_N_GPU_LAYERS"
 echo "  CPU Threads: $LLAMA_CPP_N_THREADS"
 echo ""
 
+# Set PATH to include current directory for scripts
+export PATH="$SCRIPT_DIR:$PATH"
+
+# --- Automation Helpers ---
+
+SERVER_PID=""
+
+cleanup() {
+    if [ -n "$SERVER_PID" ]; then
+        echo ""
+        echo "Stopping LLM Server (PID: $SERVER_PID)..."
+        kill "$SERVER_PID" 2>/dev/null || true
+        wait "$SERVER_PID" 2>/dev/null || true
+        echo "Server stopped."
+    fi
+}
+
+# Trap exit/interrupt to ensure cleanup
+trap cleanup EXIT INT TERM
+
+ensure_server_built() {
+    # Get build path from config
+    LLAMA_TOOLS_PATH=$(grep "llama_tools_path:" "$PROJECT_DIR/config.yaml" | awk '{print $2}' | tr -d '"')
+    LLAMA_TOOLS_PATH=${LLAMA_TOOLS_PATH:-"/home/schaf/tools/llama-cpp-turboquant-cuda"}
+    
+    if [ ! -f "$LLAMA_TOOLS_PATH/build/bin/llama-server" ]; then
+        echo "LLM Server not found. Building now..."
+        BATCH_MODE=1 "$SCRIPT_DIR/build_llama_cpp.sh"
+    fi
+}
+
+wait_for_server() {
+    local max_retries=60
+    local count=0
+    echo -n "Waiting for LLM Server to be ready..."
+    while ! curl -s http://localhost:8080/health > /dev/null; do
+        sleep 1
+        echo -n "."
+        count=$((count + 1))
+        if [ $count -ge $max_retries ]; then
+            echo ""
+            echo "ERROR: Server timed out after $max_retries seconds."
+            exit 1
+        fi
+    done
+    echo " Ready!"
+}
+
+start_server_bg() {
+    if curl -s http://localhost:8080/health > /dev/null; then
+        echo "LLM Server is already running on port 8080."
+        return
+    fi
+
+    ensure_server_built
+
+    # Get paths from config
+    LLAMA_TOOLS_PATH=$(grep "llama_tools_path:" "$PROJECT_DIR/config.yaml" | awk '{print $2}' | tr -d '"')
+    LLAMA_TOOLS_PATH=${LLAMA_TOOLS_PATH:-"/home/schaf/tools/llama-cpp-turboquant-cuda"}
+    CHAT_TEMPLATE="$PROJECT_DIR/src/inference/templates/qwen_de.jinja"
+    
+    echo "Starting LLM Server in background (Stack B)..."
+    
+    cd "$LLAMA_TOOLS_PATH/build"
+    # Start server with Stack B parameters (larger context, more threads)
+    TURBO_LAYER_ADAPTIVE=1 ./bin/llama-server \
+        -m "$MODEL_ANALYZER" \
+        -ctk turbo3 \
+        -ctv turbo3 \
+        -c 16384 \
+        -ngl 50 \
+        -fa on \
+        -t 12 \
+        -b 1024 \
+        --host 0.0.0.0 \
+        --port 8080 \
+        --temp 0.3 \
+        --top-p 0.9 \
+        --min-p 0.1 \
+        --repeat-penalty 1.2 \
+        --reasoning off \
+        --reasoning-format none \
+        --chat-template-file "$CHAT_TEMPLATE" \
+        > "$PROJECT_DIR/logs/llama_server.log" 2>&1 &
+    
+    SERVER_PID=$!
+    echo "Server started with PID: $SERVER_PID (Logs: logs/llama_server.log)"
+    
+    cd "$PROJECT_DIR"
+    wait_for_server
+}
+
 # Parse command line arguments
 COMMAND="${1:-api}"
 
@@ -109,11 +207,16 @@ case "$COMMAND" in
     
     analyze)
         REPO_PATH="${2:-.}"
+        start_server_bg
         echo "Starting analysis for: $REPO_PATH"
         echo ""
-        cd "$PROJECT_DIR/src"
+        cd "$PROJECT_DIR"
         python3 -c "
+from core.config import Config
+from core.logging_config import setup_logging
 from agent.state_machine import build_workflow
+config = Config.load()
+setup_logging(config.logging, log_level=config.logging.get_level_for_stack('stack_b'))
 workflow = build_workflow()
 result = workflow.run('$REPO_PATH')
 print('Analysis complete!')
@@ -137,6 +240,47 @@ print(f'Mode: {profile.mode.value}')
 detector.shutdown()
 "
         ;;
+
+    scan)
+        REPO_PATH="${2:-.}"
+        start_server_bg
+        echo "Starting AI-augmented SCAN for: $REPO_PATH"
+        echo "This will perform ingestion, security scanning, and AI verification."
+        echo ""
+        cd "$PROJECT_DIR"
+        python3 -c "
+from core.config import Config
+from core.logging_config import setup_logging
+from agent.state_machine import build_workflow
+config = Config.load()
+setup_logging(config.logging, log_level=config.logging.get_level_for_stack('stack_b'))
+workflow = build_workflow()
+result = workflow.run('$REPO_PATH', stop_after='llift_prioritizer')
+print('Scan complete!')
+print(f'Findings: {result.get(\"prefilter_result\", {}).get(\"security_findings\", 0)} security, {result.get(\"prefilter_result\", {}).get(\"correctness_findings\", 0)} correctness')
+"
+        ;;
+
+    fix)
+        REPO_PATH="${2:-.}"
+        start_server_bg
+        echo "Starting FIX RUN for: $REPO_PATH"
+        echo "This will scan and then attempt to generate/verify patches."
+        echo ""
+        cd "$PROJECT_DIR"
+        python3 -c "
+from core.config import Config
+from core.logging_config import setup_logging
+from agent.state_machine import build_workflow
+config = Config.load()
+setup_logging(config.logging, log_level=config.logging.get_level_for_stack('stack_b'))
+workflow = build_workflow()
+result = workflow.run('$REPO_PATH')
+print('Fix run complete!')
+print(f'Patches generated: {len(result.get(\"patches\", []))}')
+print(f'Patches verified: {len(result.get(\"verified_patches\", []))}')
+"
+        ;;
     
     download)
         echo "Downloading Stack B models..."
@@ -144,12 +288,58 @@ detector.shutdown()
         python3 "$SCRIPT_DIR/download_models.py" --stack-b
         ;;
     
+    llm-server)
+        echo "Starting TurboQuant LLM Server (Stack B Configuration)..."
+        
+        # Get paths from config
+        LLAMA_TOOLS_PATH=$(grep "llama_tools_path:" "$PROJECT_DIR/config.yaml" | awk '{print $2}' | tr -d '"')
+        LLAMA_TOOLS_PATH=${LLAMA_TOOLS_PATH:-"/home/schaf/tools/llama-cpp-turboquant-cuda"}
+        CHAT_TEMPLATE="$PROJECT_DIR/src/inference/templates/qwen_de.jinja"
+        
+        if [ ! -f "$LLAMA_TOOLS_PATH/build/bin/llama-server" ]; then
+            echo "ERROR: llama-server not found at $LLAMA_TOOLS_PATH/build/bin/llama-server"
+            echo "Please run: ./scripts/build_llama_cpp.sh first."
+            exit 1
+        fi
+
+        echo "Model: $MODEL_ANALYZER"
+        echo "Port: 8080"
+        echo ""
+
+        cd "$LLAMA_TOOLS_PATH/build"
+        
+        # Start server with Stack B optimized parameters
+        # Note: B uses larger context (16k) and more layers (50)
+        TURBO_LAYER_ADAPTIVE=1 ./bin/llama-server \
+            -m "$MODEL_ANALYZER" \
+            -ctk turbo3 \
+            -ctv turbo3 \
+            -c 16384 \
+            -ngl 50 \
+            -fa on \
+            -t 12 \
+            -b 1024 \
+            --host 0.0.0.0 \
+            --port 8080 \
+            --temp 0.3 \
+            --top-p 0.9 \
+            --min-p 0.1 \
+            --repeat-penalty 1.2 \
+            --reasoning off \
+            --reasoning-format none \
+            --chat-template-file "$CHAT_TEMPLATE"
+        ;;
+
     *)
-        echo "Usage: $0 {api|analyze [repo_path]|check|download}"
+        echo "Usage: $0 {scan [path]|fix [path]}"
         echo ""
         echo "Commands:"
-        echo "  api              Start the API server"
-        echo "  analyze [path]   Analyze a repository"
+        echo "  scan [path]      Vulnerability scan only (Automatic build & server management)"
+        echo "  fix [path]       Full autonomous fixing cycle (Automatic build & server management)"
+        echo ""
+        echo "Advanced Commands:"
+        echo "  api              Start the GlitchHunter API server"
+        echo "  llm-server       Start the TurboQuant LLM server manually"
         echo "  check            Check hardware detection"
         echo "  download         Download required models"
         exit 1

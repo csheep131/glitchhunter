@@ -1,71 +1,95 @@
 #!/bin/bash
 #
-# Build llama-cpp-python with GPU support for GlitchHunter
+# Build llama-cpp-turboquant-cuda for GlitchHunter
 #
-# This script builds llama-cpp-python from source with CUDA acceleration
-# optimized for NVIDIA GPUs (Compute Capability 8.6 for RTX 3060/3090)
+# This script builds the standalone llama-server with TurboQuant support
+# optimized for NVIDIA GPUs (Compute Capability 8.6 for RTX 3060/3090).
 #
-# Usage: ./build_llama_cpp.sh
+# Repository: https://github.com/spiritbuun/llama-cpp-turboquant-cuda.git
+# Branch: feature/turboquant-kv-cache
 #
 
 set -e
 
-echo "========================================"
-echo "  Building llama-cpp-python with CUDA  "
-echo "========================================"
+# Get project directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Configuration
-export CMAKE_ARGS="-DGGML_CUDA=on \
-    -DCUDA_ARCHITECTURES=86 \
-    -DGGML_CUDA_FA=on \
-    -DGGML_CUDA_F16=on \
-    -DGGML_CUDA_GRAPH_OPT=on \
-    -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc"
+echo "===================================================="
+echo "  Building llama-cpp-turboquant-cuda with FA/Turbo  "
+echo "===================================================="
 
-export FORCE_CMAKE=1
+# Get build path from config.yaml or use default
+LLAMA_TOOLS_PATH=$(grep "llama_tools_path:" "$PROJECT_DIR/config.yaml" | awk '{print $2}' | tr -d '"')
+LLAMA_TOOLS_PATH=${LLAMA_TOOLS_PATH:-"/home/schaf/tools/llama-cpp-turboquant-cuda"}
 
-# Check for CUDA
+echo "Target directory: $LLAMA_TOOLS_PATH"
+
+# Check dependencies
 if ! command -v nvcc &> /dev/null; then
-    echo "ERROR: CUDA not found. Please install CUDA Toolkit."
-    echo "Download from: https://developer.nvidia.com/cuda-downloads"
+    echo "ERROR: CUDA (nvcc) not found. Please install CUDA Toolkit."
     exit 1
 fi
 
-echo "CUDA found: $(nvcc --version | head -n1)"
+if ! command -v cmake &> /dev/null; then
+    echo "ERROR: cmake not found. Please install cmake."
+    exit 1
+fi
 
-# Check for CUDA compute capability
-echo ""
-echo "Target CUDA Architecture: 86 (RTX 3060/3090)"
-echo ""
+# Clone repository if needed
+if [ ! -d "$LLAMA_TOOLS_PATH" ]; then
+    echo "Cloning repository..."
+    git clone https://github.com/spiritbuun/llama-cpp-turboquant-cuda.git "$LLAMA_TOOLS_PATH"
+else
+    echo "Directory exists. Updating..."
+fi
 
-# Uninstall existing installation
-echo "Removing existing llama-cpp-python installation..."
-pip uninstall -y llama-cpp-python 2>/dev/null || true
+cd "$LLAMA_TOOLS_PATH"
 
-# Install build dependencies
-echo ""
-echo "Installing build dependencies..."
-pip install --upgrade pip setuptools wheel cmake ninja
+# Checkout branch
+echo "Checking out feature/turboquant-kv-cache..."
+git checkout feature/turboquant-kv-cache
 
-# Install llama-cpp-python with CUDA support
-echo ""
-echo "Building llama-cpp-python with CUDA support..."
-echo "This may take 10-30 minutes depending on your system..."
-echo ""
+# Check if build already exists and binary is present
+if [ -f "build/bin/llama-server" ]; then
+    echo "Build already exists and llama-server found."
+    
+    if [ "$BATCH_MODE" = "1" ]; then
+        echo "BATCH_MODE enabled: Skipping re-build."
+        exit 0
+    fi
 
-CMAKE_ARGS="$CMAKE_ARGS" pip install --no-cache-dir llama-cpp-python
+    read -p "Do you want to re-build? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Skipping build."
+        exit 0
+    fi
+fi
 
-# Verify installation
-echo ""
-echo "Verifying installation..."
-python -c "import llama_cpp; print(f'llama-cpp-python version: {llama_cpp.__version__}')"
+# Build
+echo "Preparing build directory..."
+rm -rf build
+mkdir build
+cd build
+
+echo "Configuring with CMake..."
+cmake .. \
+  -DGGML_CUDA=ON \
+  -DGGML_NATIVE=ON \
+  -DGGML_CUDA_FA=ON \
+  -DGGML_CUDA_FA_ALL_QUANTS=ON \
+  -DCMAKE_BUILD_TYPE=Release
+
+echo "Compiling (using all available cores)..."
+cmake --build . -j$(nproc)
 
 echo ""
 echo "========================================"
 echo "  Build complete!                       "
+echo "  Binary: $LLAMA_TOOLS_PATH/build/bin/llama-server"
 echo "========================================"
 echo ""
 echo "Next steps:"
-echo "1. Download models using: python scripts/download_models.py"
-echo "2. Start the API server: python -m src.api.server"
+echo "1. Run: ./scripts/run_stack_a.sh fix"
 echo ""

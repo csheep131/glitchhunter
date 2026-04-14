@@ -11,7 +11,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+export PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 SOCRATICODE_DIR="$PROJECT_DIR/.socratiCode"
 
 echo "========================================"
@@ -22,8 +22,71 @@ echo ""
 # Create SocratiCode directory
 mkdir -p "$SOCRATICODE_DIR"
 
-# Create docker-compose.yml
+# Create files
 create_docker_compose() {
+    # Generate mock server script
+    cat > "$SOCRATICODE_DIR/server.py" << 'EOF'
+from fastapi import FastAPI
+from pydantic import BaseModel
+import uvicorn
+from typing import Optional
+
+app = FastAPI()
+
+class SearchResult(BaseModel):
+    file_path: str
+    line_start: int
+    line_end: int
+    content: str
+    score: float
+    symbol_name: Optional[str] = None
+    symbol_kind: Optional[str] = None
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+@app.post("/search")
+def search(query: dict):
+    return {
+        "results": [
+            {
+                "file_path": "src/dummy.py",
+                "line_start": 1,
+                "line_end": 10,
+                "content": "def dummy(): pass",
+                "score": 0.99,
+                "symbol_name": "dummy",
+                "symbol_kind": "function"
+            }
+        ]
+    }
+
+@app.post("/graph")
+def graph(query: dict):
+    return {"results": [{"file_path": "src/dummy.py", "imports": [], "dependents": [], "symbols": []}]}
+
+@app.post("/context")
+def context(query: dict):
+    return {"results": [{"artifact_name": "Arch", "content": "Dummy arch", "score": 0.95, "metadata": {}}]}
+
+@app.post("/detect_circular")
+def detect_circular(path: dict):
+    return {"cycles": [], "total_count": 0}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8934)
+EOF
+
+    # Generate Dockerfile
+    cat > "$SOCRATICODE_DIR/Dockerfile" << 'EOF'
+FROM python:3.10-slim
+WORKDIR /app
+RUN pip install fastapi uvicorn pydantic
+COPY server.py .
+CMD ["python", "server.py"]
+EOF
+
     cat > "$SOCRATICODE_DIR/docker-compose.yml" << 'EOF'
 version: '3.8'
 
@@ -40,11 +103,6 @@ services:
     environment:
       - QDRANT__SERVICE__GRPC_PORT=6334
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # Ollama for Embeddings
   ollama:
@@ -64,16 +122,11 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   # SocratiCode MCP Server
-  socratiCode:
-    image: ghcr.io/socraticode/socratiCode:latest
-    container_name: glitchhunter-socratiCode
+  socraticode:
+    build: .
+    container_name: glitchhunter-socraticode
     ports:
       - "8934:8934"
     volumes:
@@ -85,16 +138,9 @@ services:
       - EMBEDDING_MODEL=nomic-embed-text
       - CODEBASE_PATH=/codebase
     depends_on:
-      qdrant:
-        condition: service_healthy
-      ollama:
-        condition: service_healthy
+      - qdrant
+      - ollama
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8934/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
 networks:
   default:
