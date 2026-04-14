@@ -1,11 +1,13 @@
 """
 Analysis module for GlitchHunter.
 
-Provides data-flow and control-flow graph builders for advanced code analysis.
+Provides data-flow and control-flow graph builders for advanced code analysis,
+plus graph comparison for regression detection.
 
 Exports:
     - DataFlowGraphBuilder: Builds data-flow graphs with taint tracking
     - ControlFlowGraphBuilder: Builds control-flow graphs
+    - GraphComparator: Compares before/after graphs for regression detection
     - All dataclasses for graph representation
 """
 
@@ -36,6 +38,15 @@ from .dfg_builder import (
     VariableNode,
     VariableScope,
 )
+from .graph_comparator import (
+    GraphComparator,
+    GraphComparison,
+    NodeChange,
+    EdgeChange,
+    DataFlowChange,
+    CallChainChange,
+    ChangeType,
+)
 
 __all__ = [
     # DFG Builder
@@ -63,4 +74,12 @@ __all__ = [
     "ExceptionPath",
     "EdgeType",
     "LoopType",
+    # Graph Comparator
+    "GraphComparator",
+    "GraphComparison",
+    "NodeChange",
+    "EdgeChange",
+    "DataFlowChange",
+    "CallChainChange",
+    "ChangeType",
 ]

@@ -7,13 +7,18 @@ workflow, plus advanced analysis agents for hypothesis generation and testing.
 Exports:
     - StateMachine: State machine wrapper
     - build_workflow: Function to build the LangGraph workflow
+    - PatchLoopStateMachine: Patch-Loop state machine with Gates 1-2
     - HypothesisAgent: Generates hypotheses for bug candidates
     - AnalyzerAgent: Tests hypotheses causally
     - ObserverAgent: Evaluates evidence chains
     - LLiftPrioritizer: Hybrid static + LLM prioritization
+    - PatchGenerator: Generates patches for issues
+    - VerifierNode: Verifies issues
+    - SandboxExecutor: Executes code in Docker sandbox
 """
 
 from .state_machine import build_workflow, StateMachine
+from .patch_loop import PatchLoopStateMachine, PatchIteration, PatchDecision, PatchLoopState
 from .hypothesis_agent import (
     HypothesisAgent,
     Hypothesis,
@@ -45,11 +50,19 @@ from .llift_prioritizer import (
     SemgrepResult,
     ChurnAnalysis,
 )
+from .patch_generator import PatchGenerator, PatchResult
+from .verifier import VerifierNode, VerificationResult
+from .sandbox_executor import SandboxExecutor, ExecutionResult, TestResult, SandboxConfig
 
 __all__ = [
     # State machine
     "build_workflow",
     "StateMachine",
+    # Patch Loop
+    "PatchLoopStateMachine",
+    "PatchIteration",
+    "PatchDecision",
+    "PatchLoopState",
     # Hypothesis Agent
     "HypothesisAgent",
     "Hypothesis",
@@ -77,4 +90,14 @@ __all__ = [
     "PrioritizationResult",
     "SemgrepResult",
     "ChurnAnalysis",
+    # Patch Generation & Verification
+    "PatchGenerator",
+    "PatchResult",
+    "VerifierNode",
+    "VerificationResult",
+    # Sandbox
+    "SandboxExecutor",
+    "ExecutionResult",
+    "TestResult",
+    "SandboxConfig",
 ]
