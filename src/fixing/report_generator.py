@@ -324,6 +324,33 @@ class ReportGenerator:
                     "",
                 ])
 
+        # Pending Bugs
+        pending_bugs = [b for b in bugs if b.status == "pending"]
+        if pending_bugs:
+            lines.extend([
+                "## Pending Bugs",
+                "",
+                "These bugs are pending review or fixing:",
+                "",
+            ])
+
+            for i, bug in enumerate(pending_bugs, 1):
+                lines.extend([
+                    f"### {i}. {bug.bug_id}",
+                    "",
+                    f"**Type:** {bug.bug_type}",
+                    f"**Severity:** {bug.severity}",
+                    f"**File:** `{bug.file_path}` (Line {bug.line_number})",
+                    "",
+                    "**Description:**",
+                    f"> {bug.description}",
+                    "",
+                    f"**Confidence:** {bug.confidence:.0%}",
+                    "",
+                    "---",
+                    "",
+                ])
+
         # Escalated Bugs
         escalated_bugs = [b for b in bugs if b.status == "escalated"]
         if escalated_bugs:

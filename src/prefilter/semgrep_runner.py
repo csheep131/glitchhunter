@@ -119,6 +119,14 @@ class SemgrepResult:
         return len(self.findings)
 
     @property
+    def rules_matched(self) -> int:
+        """Get number of unique rules matched (alias for rules_applied)."""
+        if self.rules_applied > 0:
+            return self.rules_applied
+        # Calculate from findings if not set
+        return len(set(f.rule_id for f in self.findings))
+
+    @property
     def has_critical(self) -> bool:
         """Check if any critical findings exist."""
         return any(f.severity in ("ERROR", "CRITICAL") for f in self.findings)
@@ -704,3 +712,24 @@ class SemgrepRunner:
             return None
         except Exception:
             return None
+
+    def _parse_output(self, json_output: str, repo_path: Path) -> SemgrepResult:
+        """
+        Parse Semgrep JSON output (test-compatible API).
+
+        Args:
+            json_output: JSON output from Semgrep.
+            repo_path: Repository path for resolving file paths.
+
+        Returns:
+            SemgrepResult with parsed findings.
+        """
+        # Use existing parse_json_output and adjust paths
+        result = self.parse_json_output(json_output)
+
+        # Adjust file paths to be absolute based on repo_path
+        for finding in result.findings:
+            if finding.file_path and not Path(finding.file_path).is_absolute():
+                finding.file_path = str(repo_path / finding.file_path)
+
+        return result

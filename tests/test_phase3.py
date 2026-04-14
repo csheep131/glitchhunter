@@ -160,14 +160,14 @@ class TestCoverageChecker:
         """Testet CoverageDiff Berechnung."""
         before = CoverageMetrics(line_coverage=0.90)
         after = CoverageMetrics(line_coverage=0.85)
-        
+
         diff = CoverageDiff(
             before=before,
             after=after,
             delta_line=after.line_coverage - before.line_coverage,
         )
-        
-        assert diff.delta_line == -0.05
+
+        assert diff.delta_line == pytest.approx(-0.05)
         assert diff.regression is True  # -5% ist Regression
 
     def test_coverage_tolerance(self, checker):

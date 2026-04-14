@@ -80,7 +80,7 @@ GlitchHunter is an intelligent code analysis tool that uses **local open-source 
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/glitchhunter.git
+git clone https://github.com/csheep131/glitchhunter.git
 cd glitchhunter
 
 # Install dependencies

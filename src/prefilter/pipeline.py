@@ -114,6 +114,16 @@ class PreFilterResult:
         """Check if any critical issues exist."""
         return False
 
+    @property
+    def stats(self) -> Dict[str, Any]:
+        """Get pipeline statistics."""
+        return {
+            "total_security_issues": self.total_security_issues,
+            "has_critical_issues": self.has_critical_issues,
+            "candidate_count": len(self.candidates),
+            "filtered_percentage": self.filtered_percentage,
+        }
+
 
 class PreFilterPipeline:
     """
@@ -155,9 +165,21 @@ class PreFilterPipeline:
 
         logger.debug(f"PreFilterPipeline initialized for {repo_path}")
 
-    def run(self) -> PreFilterResult:
+    def run(
+        self,
+        run_security: bool = True,
+        run_correctness: bool = True,
+        run_complexity: bool = True,
+        run_git: bool = True,
+    ) -> PreFilterResult:
         """
         Run the complete pre-filter pipeline.
+
+        Args:
+            run_security: Run security scans.
+            run_correctness: Run correctness scans.
+            run_complexity: Run complexity analysis.
+            run_git: Run git churn analysis.
 
         Returns:
             PreFilterResult with all analysis results
@@ -167,11 +189,17 @@ class PreFilterPipeline:
 
         result = PreFilterResult()
 
-        # Run all analysis steps
-        result.semgrep_result = self.run_semgrep()
+        # Run analysis steps based on flags
+        if run_security or run_correctness:
+            result.semgrep_result = self.run_semgrep(
+                run_security=run_security,
+                run_correctness=run_correctness,
+            )
         ast_result = self.run_ast_analysis()
-        result.complexity_result = self.run_complexity_analysis()
-        result.churn_analysis = self.run_git_churn_analysis()
+        if run_complexity:
+            result.complexity_result = self.run_complexity_analysis()
+        if run_git:
+            result.churn_analysis = self.run_git_churn_analysis()
 
         # Combine results
         result = self.combine_results(result, ast_result)
@@ -188,9 +216,17 @@ class PreFilterPipeline:
 
         return result
 
-    def run_semgrep(self) -> SemgrepResult:
+    def run_semgrep(
+        self,
+        run_security: bool = True,
+        run_correctness: bool = True,
+    ) -> SemgrepResult:
         """
         Run Semgrep security and correctness scans.
+
+        Args:
+            run_security: Run security scans.
+            run_correctness: Run correctness scans.
 
         Returns:
             SemgrepResult with combined findings
@@ -198,15 +234,20 @@ class PreFilterPipeline:
         logger.info("Running Semgrep scans")
 
         try:
+            all_findings = []
+            all_errors = []
+
             # Run security scan
-            security_result = self.semgrep_runner.run_security_scan(self.repo_path)
+            if run_security:
+                security_result = self.semgrep_runner.run_security_scan(self.repo_path)
+                all_findings.extend(security_result.findings)
+                all_errors.extend(security_result.errors)
 
             # Run correctness scan
-            correctness_result = self.semgrep_runner.run_correctness_scan(self.repo_path)
-
-            # Combine findings
-            all_findings = security_result.findings + correctness_result.findings
-            all_errors = security_result.errors + correctness_result.errors
+            if run_correctness:
+                correctness_result = self.semgrep_runner.run_correctness_scan(self.repo_path)
+                all_findings.extend(correctness_result.findings)
+                all_errors.extend(correctness_result.errors)
 
             return SemgrepResult(
                 findings=all_findings,

@@ -78,7 +78,13 @@ class CoverageDiff:
     delta_line: float = 0.0
     delta_branch: float = 0.0
     delta_function: float = 0.0
-    regression: bool = False
+    _regression: bool = field(default=False, repr=False)
+
+    @property
+    def regression(self) -> bool:
+        """Check if regression detected (delta < -tolerance)."""
+        # Use tolerance of 0.01 (1%) by default
+        return self.delta_line < -0.01
 
     def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dict."""

@@ -866,3 +866,48 @@ class ASTAnalyzer:
             "weak_crypto": "Use SHA-256 or stronger, use AES instead of DES",
         }
         return recommendations.get(finding_type, "Review and fix this issue")
+
+    def get_language_stats(self, repo_path: Path) -> Dict[str, int]:
+        """
+        Get language statistics for a repository.
+
+        Args:
+            repo_path: Path to the repository.
+
+        Returns:
+            Dict mapping language to file count.
+        """
+        stats: Dict[str, int] = {}
+
+        # File extension to language mapping
+        ext_map = {
+            ".py": "python",
+            ".js": "javascript",
+            ".ts": "typescript",
+            ".jsx": "javascript",
+            ".tsx": "typescript",
+            ".rs": "rust",
+            ".go": "go",
+            ".java": "java",
+            ".rb": "ruby",
+            ".php": "php",
+            ".cpp": "cpp",
+            ".cc": "cpp",
+            ".c": "c",
+            ".h": "cpp",
+            ".cs": "csharp",
+            ".scala": "scala",
+            ".kt": "kotlin",
+            ".swift": "swift",
+        }
+
+        try:
+            for ext, lang in ext_map.items():
+                count = sum(1 for _ in repo_path.rglob(f"*{ext}"))
+                if count > 0:
+                    stats[lang] = count
+
+        except Exception as e:
+            logger.error(f"Error calculating language stats: {e}")
+
+        return stats
