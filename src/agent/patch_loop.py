@@ -16,13 +16,13 @@ from enum import Enum
 
 from langgraph.graph import StateGraph, END
 
-from .patch_generator import PatchGenerator, PatchResult
-from .sandbox_executor import SandboxExecutor, ExecutionResult, SandboxConfig
-from ..fixing.pre_apply_validator import PreApplyValidator, Gate1Result
-from ..fixing.post_apply_verifier import PostApplyVerifier, Gate2Result
-from ..fixing.coverage_checker import CoverageChecker, CoverageMetrics
-from ..fixing.regression_test_generator import RegressionTestGenerator, TestSpec
-from ..analysis.graph_comparator import GraphComparator, GraphComparison
+from agent.patch_generator import PatchGenerator, PatchResult
+from agent.sandbox_executor import SandboxExecutor, ExecutionResult, SandboxConfig
+from fixing.pre_apply_validator import PreApplyValidator, Gate1Result
+from fixing.post_apply_verifier import PostApplyVerifier, Gate2Result
+from fixing.coverage_checker import CoverageChecker, CoverageMetrics
+from fixing.regression_test_generator import RegressionTestGenerator, TestSpec
+from analysis.graph_comparator import GraphComparator, GraphComparison
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class PatchIteration:
     patch: Optional[PatchResult] = None
     gate1_result: Optional[Gate1Result] = None
     execution_result: Optional[ExecutionResult] = None
-        gate2_result: Optional[Gate2Result] = None
+    gate2_result: Optional[Gate2Result] = None
     decision: Optional[PatchDecision] = None
     reason: str = ""
 
@@ -418,7 +418,6 @@ class PatchLoopStateMachine:
 
     def _dict_to_candidate(self, candidate_dict: Dict[str, Any]) -> Any:
         """Konvertiert Dict zu Candidate-Objekt."""
-        from .regression_test_generator import Candidate
 
         return Candidate(
             file_path=candidate_dict.get("file_path", ""),

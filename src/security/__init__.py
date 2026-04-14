@@ -5,9 +5,9 @@ Enthält OWASP-Scanner, Security-Shield und Attack-Scenarios.
 Nur für Stack B (Full Security) aktiviert.
 """
 
-from .shield import SecurityShield, SecurityReport
-from .owasp_scanner import OWAPScanner, OWAPFinding
-from .attack_scenarios import AttackScenario, AttackResult
+from security.shield import SecurityShield, SecurityReport
+from security.owasp_scanner import OWAPScanner, OWAPFinding
+from security.attack_scenarios import AttackScenario, AttackResult
 
 __all__ = [
     "SecurityShield",

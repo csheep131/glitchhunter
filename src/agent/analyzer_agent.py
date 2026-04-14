@@ -11,15 +11,15 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import networkx as nx
 
-from ..analysis.cfg_builder import ControlFlowGraph
-from ..analysis.dfg_builder import (
+from analysis.cfg_builder import ControlFlowGraph
+from analysis.dfg_builder import (
     DataFlow,
     DataFlowGraph,
     DataFlowGraphBuilder,
 )
-from ..core.logging_config import get_logger
+from core.logging_config import get_logger
 
-from .hypothesis_agent import Hypothesis
+from agent.hypothesis_agent import Hypothesis
 
 logger = get_logger(__name__)
 

@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..core.exceptions import ValidationError
+from core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 

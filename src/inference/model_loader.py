@@ -9,9 +9,9 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from ..core.exceptions import ModelLoadError
-from ..hardware.profiles import ModelConfig
-from ..hardware.vram_manager import VRAMManager
+from core.exceptions import ModelLoadError
+from hardware.profiles import ModelConfig
+from hardware.vram_manager import VRAMManager
 
 logger = logging.getLogger(__name__)
 

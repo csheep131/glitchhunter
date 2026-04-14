@@ -8,7 +8,7 @@ Automatically detects GPU hardware and selects the appropriate hardware profile
 import logging
 from typing import Optional
 
-from .profiles import HardwareProfile, StackType, get_profile
+from hardware.profiles import HardwareProfile, StackType, get_profile
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from ..core.exceptions import SecurityError
+from core.exceptions import SecurityError
 
 logger = logging.getLogger(__name__)
 

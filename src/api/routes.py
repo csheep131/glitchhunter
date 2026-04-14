@@ -11,9 +11,9 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, status
 
-from ..core.exceptions import GlitchHunterException
-from ..hardware.detector import HardwareDetector
-from .schemas import (
+from core.exceptions import GlitchHunterException
+from hardware.detector import HardwareDetector
+from api.schemas import (
     AnalyzeRequest,
     AnalyzeResponse,
     AnalysisResult,
@@ -329,8 +329,7 @@ async def cancel_analysis(analysis_id: str) -> None:
     logger.info(f"Analysis {analysis_id} cancelled")
 
 
-# Error handler for GlitchHunter exceptions
-@router.exception_handler(GlitchHunterException)
+# Error handler for GlitchHunter exceptions (registered on app in server.py)
 async def glitchhunter_exception_handler(
     request, exc: GlitchHunterException
 ) -> Dict[str, Any]:

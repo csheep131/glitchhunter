@@ -307,7 +307,7 @@ class StateMachine:
                 return state
 
             # Initialize repository mapper
-            from ..mapper.repo_mapper import RepositoryMapper
+            from mapper.repo_mapper import RepositoryMapper
 
             mapper = RepositoryMapper(repo_path)
 
@@ -348,7 +348,7 @@ class StateMachine:
         logger.info("Entering SHIELD state")
 
         try:
-            from ..prefilter.pipeline import PreFilterPipeline
+            from prefilter.pipeline import PreFilterPipeline
 
             repo_path = Path(state["repo_path"])
 

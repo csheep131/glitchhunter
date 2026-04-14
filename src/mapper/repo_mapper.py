@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from .symbol_graph import SymbolGraph, EDGE_TYPE_CALLS, EDGE_TYPE_IMPORTS, EDGE_TYPE_EXTENDS, EDGE_TYPE_IMPLEMENTS, EDGE_TYPE_MEMBER_OF, EDGE_TYPE_DEFINES
+from mapper.symbol_graph import SymbolGraph, EDGE_TYPE_CALLS, EDGE_TYPE_IMPORTS, EDGE_TYPE_EXTENDS, EDGE_TYPE_IMPLEMENTS, EDGE_TYPE_MEMBER_OF, EDGE_TYPE_DEFINES
 
 logger = logging.getLogger(__name__)
 
@@ -280,7 +280,6 @@ class RepositoryMapper:
 
     def _parse_python_file(self, file_path: Path) -> List[Any]:
         """Parse Python file and extract symbols."""
-        from .symbol_graph import SymbolNode
 
         symbols = []
 
@@ -382,7 +381,6 @@ class RepositoryMapper:
 
     def _parse_javascript_file(self, file_path: Path) -> List[Any]:
         """Parse JavaScript/TypeScript file and extract symbols."""
-        from .symbol_graph import SymbolNode
 
         symbols = []
 
@@ -505,7 +503,6 @@ class RepositoryMapper:
 
     def _parse_rust_file(self, file_path: Path) -> List[Any]:
         """Parse Rust file and extract symbols."""
-        from .symbol_graph import SymbolNode
 
         symbols = []
 
@@ -641,7 +638,6 @@ class RepositoryMapper:
 
     def _parse_go_file(self, file_path: Path) -> List[Any]:
         """Parse Go file and extract symbols."""
-        from .symbol_graph import SymbolNode
 
         symbols = []
 
@@ -725,7 +721,6 @@ class RepositoryMapper:
 
     def _parse_java_file(self, file_path: Path) -> List[Any]:
         """Parse Java file and extract symbols."""
-        from .symbol_graph import SymbolNode
 
         symbols = []
 
@@ -881,7 +876,6 @@ class RepositoryMapper:
         self, tree: Any, file_path: str, lines: List[str]
     ) -> List[Any]:
         """Extract Python symbols from Tree-sitter AST."""
-        from .symbol_graph import SymbolNode
 
         symbols = []
         root = tree.root_node
@@ -972,7 +966,6 @@ class RepositoryMapper:
         self, tree: Any, file_path: str, lines: List[str]
     ) -> List[Any]:
         """Extract JavaScript/TypeScript symbols from Tree-sitter AST."""
-        from .symbol_graph import SymbolNode
 
         symbols = []
         root = tree.root_node
@@ -1030,7 +1023,6 @@ class RepositoryMapper:
         self, tree: Any, file_path: str, lines: List[str]
     ) -> List[Any]:
         """Extract Rust symbols from Tree-sitter AST."""
-        from .symbol_graph import SymbolNode
 
         symbols = []
         root = tree.root_node
@@ -1205,7 +1197,6 @@ class RepositoryMapper:
 
     def _extract_import_edges(self) -> None:
         """Extract IMPORTS edges between symbols."""
-        from .symbol_graph import EDGE_TYPE_IMPORTS
 
         for file_path, symbol_ids in self.symbol_graph._file_to_symbols.items():
             for symbol_id in symbol_ids:

@@ -8,8 +8,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from ..prefilter.pipeline import PreFilterPipeline, PreFilterResult
-from ..security.shield import SecurityShield, SecurityReport
+from prefilter.pipeline import PreFilterPipeline, PreFilterResult
+from security.shield import SecurityShield, SecurityReport
 
 logger = logging.getLogger(__name__)
 

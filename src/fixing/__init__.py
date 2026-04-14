@@ -17,15 +17,15 @@ Exports:
     - EscalationManager: Manages escalation hierarchy
 """
 
-from .regression_test_generator import RegressionTestGenerator, TestSpec
-from .semantic_diff import SemanticDiffValidator, SemanticDiff, SymbolChange
-from .pre_apply_validator import PreApplyValidator, Gate1Result, PolicyViolation
-from .post_apply_verifier import PostApplyVerifier, Gate2Result, BreakingChange
-from .coverage_checker import CoverageChecker, CoverageMetrics, CoverageDiff, CoverageCheckResult
-from .rule_learner import RuleLearner, CodePattern, SemgrepRule, LearningResult
-from .patch_merger import PatchMerger, GitCommit, MergeResult
-from .report_generator import ReportGenerator, ReportBundle, BugSummary, FixDetail
-from .escalation_manager import EscalationManager, EscalationContext, HumanReport
+from fixing.regression_test_generator import RegressionTestGenerator, TestSpec
+from fixing.semantic_diff import SemanticDiffValidator, SemanticDiff, SymbolChange
+from fixing.pre_apply_validator import PreApplyValidator, Gate1Result, PolicyViolation
+from fixing.post_apply_verifier import PostApplyVerifier, Gate2Result, BreakingChange
+from fixing.coverage_checker import CoverageChecker, CoverageMetrics, CoverageDiff, CoverageCheckResult
+from fixing.rule_learner import RuleLearner, CodePattern, SemgrepRule, LearningResult
+from fixing.patch_merger import PatchMerger, GitCommit, MergeResult
+from fixing.report_generator import ReportGenerator, ReportBundle, BugSummary, FixDetail
+from fixing.escalation_manager import EscalationManager, EscalationContext, HumanReport
 
 __all__ = [
     # Regression Tests

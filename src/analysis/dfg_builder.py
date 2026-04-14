@@ -12,8 +12,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import networkx as nx
 
-from ..core.exceptions import GraphAnalysisError
-from ..core.logging_config import get_logger
+from core.exceptions import GraphAnalysisError
+from core.logging_config import get_logger
 
 logger = get_logger(__name__)
 

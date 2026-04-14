@@ -9,8 +9,8 @@ Exports:
     - MCPConfig: MCP configuration
 """
 
-from .socratiCode_client import SocratiCodeMCP
-from .fallback_manager import FallbackManager
+from mcp.socratiCode_client import SocratiCodeMCP
+from mcp.fallback_manager import FallbackManager
 
 __all__ = [
     "SocratiCodeMCP",

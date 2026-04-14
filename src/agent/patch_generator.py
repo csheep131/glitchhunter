@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from ..inference.engine import InferenceEngine, InferenceConfig, InferenceResult
+from inference.engine import InferenceEngine, InferenceConfig, InferenceResult
 
 logger = logging.getLogger(__name__)
 

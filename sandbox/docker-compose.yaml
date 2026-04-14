@@ -1,0 +1,34 @@
+# GlitchHunter Sandbox Docker Compose
+# Isolated test execution environment for patch verification
+
+version: "3.8"
+
+services:
+  sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: glitchhunter-sandbox
+    # Network disabled for security
+    network_mode: none
+    # Read-only filesystem except for /sandbox
+    read_only: true
+    tmpfs:
+      - /tmp:size=512M
+      - /sandbox/repo:size=1G
+      - /sandbox/coverage:size=128M
+    # Resource limits
+    mem_limit: 2g
+    cpus: 2
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Mount repository for testing
+    volumes:
+      - ${REPO_PATH:-/tmp/repo}:/sandbox/repo:ro
+      - ${COVERAGE_OUTPUT:-./coverage_output}:/sandbox/coverage
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1

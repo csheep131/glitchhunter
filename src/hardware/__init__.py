@@ -10,9 +10,9 @@ Exports:
     - VRAMManager: Manages VRAM allocation for models
 """
 
-from .detector import HardwareDetector
-from .profiles import HardwareProfile, StackType
-from .vram_manager import VRAMManager
+from hardware.detector import HardwareDetector
+from hardware.profiles import HardwareProfile, StackType
+from hardware.vram_manager import VRAMManager
 
 __all__ = [
     "HardwareDetector",

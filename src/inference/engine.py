@@ -8,7 +8,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from ..core.exceptions import InferenceError
+from core.exceptions import InferenceError
+from hardware.profiles import InferenceConfig
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,16 @@ class EmbeddingResponse:
     embeddings: List[List[float]]
     model: str
     usage: Dict[str, int]
+
+
+@dataclass
+class InferenceResult:
+    """Result from an inference call."""
+
+    content: str
+    model: str
+    usage: Dict[str, int]
+    finish_reason: str = "stop"
 
 
 class InferenceEngine:

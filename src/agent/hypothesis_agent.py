@@ -12,9 +12,9 @@ from typing import Any, Dict, List, Optional
 
 import networkx as nx
 
-from ..analysis.cfg_builder import ControlFlowGraph
-from ..analysis.dfg_builder import DataFlowGraph, TaintPath
-from ..core.logging_config import get_logger
+from analysis.cfg_builder import ControlFlowGraph
+from analysis.dfg_builder import DataFlowGraph, TaintPath
+from core.logging_config import get_logger
 
 logger = get_logger(__name__)
 

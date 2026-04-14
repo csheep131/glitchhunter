@@ -11,10 +11,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .ast_analyzer import ASTAnalyzer, ASTSymbol
-from .complexity import ComplexityAnalyzer, ComplexityMetrics, Hotspot as ComplexityHotspot
-from .git_churn import GitChurnAnalyzer, Hotspot as GitHotspot, ChurnAnalysis
-from .semgrep_runner import SemgrepResult, SemgrepRunner, SemgrepFinding
+from prefilter.ast_analyzer import ASTAnalyzer, ASTSymbol
+from prefilter.complexity import ComplexityAnalyzer, ComplexityMetrics, Hotspot as ComplexityHotspot
+from prefilter.git_churn import GitChurnAnalyzer, Hotspot as GitHotspot, ChurnAnalysis
+from prefilter.semgrep_runner import SemgrepResult, SemgrepRunner, SemgrepFinding
 
 logger = logging.getLogger(__name__)
 

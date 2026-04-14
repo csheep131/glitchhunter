@@ -14,9 +14,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from ..core.config import Config
-from ..core.logging_config import setup_logging
-from .routes import router
+from core.config import Config
+from core.logging_config import setup_logging
+from api.routes import router
 
 logger = logging.getLogger(__name__)
 

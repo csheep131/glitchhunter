@@ -9,9 +9,9 @@ Exports:
     - OpenAIAPI: OpenAI-compatible API wrapper
 """
 
-from .engine import InferenceEngine
-from .model_loader import ModelLoader
-from .openai_api import OpenAIAPI
+from inference.engine import InferenceEngine
+from inference.model_loader import ModelLoader
+from inference.openai_api import OpenAIAPI
 
 __all__ = [
     "InferenceEngine",

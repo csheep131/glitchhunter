@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from enum import Enum
 
-from ..core.exceptions import SandboxError
+from core.exceptions import SandboxError
 
 logger = logging.getLogger(__name__)
 

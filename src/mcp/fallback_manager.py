@@ -9,8 +9,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..core.exceptions import ValidationError
-from ..mapper.symbol_graph import SymbolGraph
+from core.exceptions import ValidationError
+from mapper.symbol_graph import SymbolGraph
 
 logger = logging.getLogger(__name__)
 
@@ -283,7 +283,7 @@ class FallbackManager:
     def _build_symbol_graph(self) -> None:
         """Build local symbol graph."""
         try:
-            from ..mapper.repo_mapper import RepositoryMapper
+            from mapper.repo_mapper import RepositoryMapper
 
             mapper = RepositoryMapper(self.repo_path)
             self.symbol_graph = mapper.build_symbol_graph(max_files=500)

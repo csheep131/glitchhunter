@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
-from .profiles import HardwareProfile, ExecutionMode
+from hardware.profiles import HardwareProfile, ExecutionMode
 
 logger = logging.getLogger(__name__)
 

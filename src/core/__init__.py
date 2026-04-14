@@ -10,9 +10,9 @@ Exports:
     - GlitchHunterException: Base exception class
 """
 
-from .config import Config, LoggingConfig
-from .logging_config import setup_logging
-from .exceptions import (
+from core.config import Config, LoggingConfig
+from core.logging_config import setup_logging
+from core.exceptions import (
     GlitchHunterException,
     HardwareDetectionError,
     ModelLoadError,

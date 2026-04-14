@@ -14,10 +14,10 @@ Exports:
     - HumanReportGenerator: Level 4 implementation
 """
 
-from .context_explosion import ContextExplosion, ExplodedContext
-from .bug_decomposer import BugDecomposer, DecomposedBug, DecompositionResult
-from .ensemble_coordinator import EnsembleCoordinator, EnsembleResult, ModelResponse
-from .human_report_generator import HumanReportGenerator, HumanReport
+from escalation.context_explosion import ContextExplosion, ExplodedContext
+from escalation.bug_decomposer import BugDecomposer, DecomposedBug, DecompositionResult
+from escalation.ensemble_coordinator import EnsembleCoordinator, EnsembleResult, ModelResponse
+from escalation.human_report_generator import HumanReportGenerator, HumanReport
 
 __all__ = [
     # Level 1

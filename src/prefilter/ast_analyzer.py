@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ..core.exceptions import ValidationError
+from core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 

@@ -9,10 +9,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
-from .owasp_scanner import OWAPScanner, OWAPFinding
-from .attack_scenarios import AttackScenario, AttackResult
+from security.owasp_scanner import OWAPScanner, OWAPFinding
+from security.attack_scenarios import AttackScenario, AttackResult
 
-from ..core.exceptions import SecurityError
+from core.exceptions import SecurityError
 
 logger = logging.getLogger(__name__)
 

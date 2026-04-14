@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from .exceptions import ConfigError
+from core.exceptions import ConfigError
 
 logger = logging.getLogger(__name__)
 

@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
-from ..core.exceptions import InferenceError
+from core.exceptions import InferenceError
 
 logger = logging.getLogger(__name__)
 

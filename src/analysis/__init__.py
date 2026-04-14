@@ -11,7 +11,7 @@ Exports:
     - All dataclasses for graph representation
 """
 
-from .cfg_builder import (
+from analysis.cfg_builder import (
     BasicBlock,
     CFGEdge,
     Conditional,
@@ -22,7 +22,7 @@ from .cfg_builder import (
     Loop,
     LoopType,
 )
-from .dfg_builder import (
+from analysis.dfg_builder import (
     DataFlow,
     DataFlowGraph,
     DataFlowGraphBuilder,
@@ -38,7 +38,7 @@ from .dfg_builder import (
     VariableNode,
     VariableScope,
 )
-from .graph_comparator import (
+from analysis.graph_comparator import (
     GraphComparator,
     GraphComparison,
     NodeChange,

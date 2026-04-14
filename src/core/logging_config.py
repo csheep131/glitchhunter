@@ -13,7 +13,7 @@ from typing import Optional
 
 from pythonjsonlogger import jsonlogger
 
-from .config import LoggingConfig as LoggingConfigData
+from core.config import LoggingConfig as LoggingConfigData
 
 # Module logger
 logger = logging.getLogger(__name__)

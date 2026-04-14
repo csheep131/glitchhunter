@@ -12,11 +12,11 @@ Exports:
     - GitChurnAnalyzer: Git history analyzer
 """
 
-from .pipeline import PreFilterPipeline, PreFilterResult
-from .semgrep_runner import SemgrepRunner
-from .ast_analyzer import ASTAnalyzer
-from .complexity import ComplexityAnalyzer
-from .git_churn import GitChurnAnalyzer
+from prefilter.pipeline import PreFilterPipeline, PreFilterResult
+from prefilter.semgrep_runner import SemgrepRunner
+from prefilter.ast_analyzer import ASTAnalyzer
+from prefilter.complexity import ComplexityAnalyzer
+from prefilter.git_churn import GitChurnAnalyzer
 
 __all__ = [
     "PreFilterPipeline",

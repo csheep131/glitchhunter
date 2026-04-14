@@ -12,7 +12,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from .pre_apply_validator import Gate1Result
+from fixing.pre_apply_validator import Gate1Result
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +136,7 @@ class PostApplyVerifier:
     def _init_engine(self) -> None:
         """Initialisiert Inference-Engine."""
         try:
-            from ..inference.engine import InferenceEngine, InferenceConfig
+            from inference.engine import InferenceEngine, InferenceConfig
 
             self._engine = InferenceEngine(
                 model_path=self.model_path,
@@ -326,7 +326,6 @@ ANTWORT (nur Zahl 0.0-1.0):
             Graph-Comparison als Dict.
         """
         try:
-            from .graph_comparator import GraphComparator
 
             comparator = GraphComparator()
             comparison = comparator.compare(before_graph, after_graph, graph_type="dfg")

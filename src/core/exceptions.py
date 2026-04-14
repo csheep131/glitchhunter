@@ -311,3 +311,59 @@ class ValidationError(GlitchHunterException):
             code="VALIDATION_ERROR",
             details=details,
         )
+
+
+class SecurityError(GlitchHunterException):
+    """
+    Raised when a security vulnerability is detected.
+
+    Examples:
+        - OWASP Top 10 violation found
+        - Injection vulnerability detected
+        - Broken access control identified
+    """
+
+    def __init__(
+        self,
+        message: str,
+        severity: Optional[str] = None,
+        rule_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        details = details or {}
+        if severity:
+            details["severity"] = severity
+        if rule_id:
+            details["rule_id"] = rule_id
+        super().__init__(
+            message=message,
+            code="SECURITY_ERROR",
+            details=details,
+        )
+
+
+class SandboxError(GlitchHunterException):
+    """
+    Raised when sandbox execution fails.
+
+    Examples:
+        - Docker not available
+        - Container execution failed
+        - Sandbox timeout
+        - Resource limit exceeded
+    """
+
+    def __init__(
+        self,
+        message: str,
+        container_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        details = details or {}
+        if container_id:
+            details["container_id"] = container_id
+        super().__init__(
+            message=message,
+            code="SANDBOX_ERROR",
+            details=details,
+        )

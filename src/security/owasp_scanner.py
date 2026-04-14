@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
-from ..core.exceptions import SecurityError
+from core.exceptions import SecurityError
 
 logger = logging.getLogger(__name__)
 

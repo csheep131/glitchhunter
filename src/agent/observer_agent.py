@@ -8,10 +8,10 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from ..core.logging_config import get_logger
+from core.logging_config import get_logger
 
-from .analyzer_agent import Evidence, EvidenceCollection, EvidenceType
-from .hypothesis_agent import Hypothesis
+from agent.analyzer_agent import Evidence, EvidenceCollection, EvidenceType
+from agent.hypothesis_agent import Hypothesis
 
 logger = get_logger(__name__)
 
