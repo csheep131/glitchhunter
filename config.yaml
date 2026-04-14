@@ -1,0 +1,181 @@
+# GlitchHunter Konfiguration
+# Unterstützt Stack A (GTX 3060, 8GB) und Stack B (RTX 3090, 24GB)
+
+hardware:
+  # Stack A: Sequentiell, Security-Lite
+  stack_a:
+    name: "GTX 3060"
+    vram_limit: 8  # GB
+    cuda_compute: "8.6"
+    mode: "sequential"
+    
+    models:
+      primary:
+        name: "qwen3.5-9b"
+        path: "models/Qwen3.5-9B-Instruct-Q4_K_M.gguf"
+        context_length: 8192
+        n_gpu_layers: 35
+        n_threads: 8
+      
+      secondary:
+        name: "phi-4-mini"
+        path: "models/phi-4-mini-instruct.Q4_K_M.gguf"
+        context_length: 4096
+        n_gpu_layers: 25
+        n_threads: 6
+    
+    security:
+      enabled: true
+      level: "lite"
+      owasp_top10: true
+      api_security: false
+      attack_scenarios: false
+    
+    inference:
+      max_batch_size: 1
+      parallel_requests: false
+      turbo_quant: true
+    
+  # Stack B: Parallel, Full Security
+  stack_b:
+    name: "RTX 3090"
+    vram_limit: 24  # GB
+    cuda_compute: "8.6"
+    mode: "parallel"
+    
+    models:
+      primary:
+        name: "qwen3.5-27b"
+        path: "models/Qwen3.5-27B-Instruct-Q4_K_M.gguf"
+        context_length: 16384
+        n_gpu_layers: 50
+        n_threads: 12
+      
+      secondary:
+        name: "deepseek-v3.2-small"
+        path: "models/DeepSeek-V3.2-Small-Q4_K_M.gguf"
+        context_length: 8192
+        n_gpu_layers: 40
+        n_threads: 10
+    
+    security:
+      enabled: true
+      level: "full"
+      owasp_top10: true
+      api_security: true
+      attack_scenarios: true
+    
+    inference:
+      max_batch_size: 4
+      parallel_requests: true
+      turbo_quant: true
+
+# Pre-Filter Konfiguration (für beide Stacks)
+prefilter:
+  enabled: true
+  
+  semgrep:
+    enabled: true
+    rules:
+      - "security"
+      - "correctness"
+      - "performance"
+    custom_rules_path: "src/security/rules"
+  
+  ast:
+    enabled: true
+    languages:
+      - "python"
+      - "javascript"
+      - "typescript"
+      - "go"
+      - "java"
+  
+  complexity:
+    enabled: true
+    max_cyclomatic: 15
+    max_cognitive: 25
+    max_nesting: 5
+    tool: "radon"  # oder "lizard"
+
+# Agent Konfiguration
+agent:
+  states:
+    - "analyzer"
+    - "verifier"
+    - "sandbox_executor"
+    - "patch_generator"
+    - "finalizer"
+  
+  max_iterations: 5
+  timeout_per_state: 300  # Sekunden
+  
+  sandbox:
+    enabled: true
+    docker_image: "python:3.11-slim"
+    network_disabled: true
+    timeout: 60
+
+# Mapper Konfiguration
+mapper:
+  enabled: true
+  use_ctags: true
+  use_tree_sitter: true
+  symbol_graph: true
+  repomix:
+    enabled: true
+    output_format: "xml"
+
+# API Konfiguration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8080"
+  
+  rate_limit:
+    enabled: true
+    requests_per_minute: 60
+  
+  auth:
+    enabled: false
+    api_key_header: "X-API-Key"
+
+# Logging Konfiguration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/glitchhunter.log"
+  max_size_mb: 100
+  backup_count: 5
+  
+  # Stack-spezifisches Logging
+  stack_a:
+    level: "INFO"
+  
+  stack_b:
+    level: "DEBUG"
+
+# Feature Toggles
+features:
+  # Nur für Stack B verfügbar
+  parallel_inference: false
+  deep_security_scan: false
+  multi_model_consensus: false
+  
+  # Für beide Stacks
+  ast_analysis: true
+  complexity_check: true
+  basic_security: true
+  patch_generation: true
+  sandbox_execution: true
+
+# Pfade
+paths:
+  models: "models"
+  logs: "logs"
+  cache: ".cache"
+  temp: ".temp"
+  security_rules: "src/security/rules"

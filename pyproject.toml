@@ -1,0 +1,193 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glitchhunter"
+version = "0.1.0"
+description = "AI-powered autonomous code analysis and bug-fixing system"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "GlitchHunter Team", email = "team@glitchhunter.dev"}
+]
+keywords = [
+    "code-analysis",
+    "bug-detection",
+    "ai",
+    "llm",
+    "security",
+    "semgrep",
+    "mcp",
+    "langgraph"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langchain-core>=0.3.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "semgrep>=1.60.0",
+    "tree-sitter>=0.21.0",
+    "tree-sitter-python>=0.21.0",
+    "tree-sitter-javascript>=0.21.0",
+    "tree-sitter-rust>=0.21.0",
+    "networkx>=3.0.0",
+    "hypothesis>=6.90.0",
+    "radon>=6.0.0",
+    "chromadb>=0.5.0",
+    "qdrant-client>=1.8.0",
+    "mcp>=0.1.0",
+    "pynvml>=11.5.0",
+    "pyyaml>=6.0.0",
+    "httpx>=0.27.0",
+    "gitpython>=3.1.0",
+    "rich>=13.0.0",
+    "click>=8.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.23.0",
+    "mypy>=1.8.0",
+    "black>=24.0.0",
+    "ruff>=0.3.0",
+    "pre-commit>=3.6.0",
+]
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+]
+
+[project.scripts]
+glitchhunter = "src.cli:main"
+glitchhunter-api = "src.api.server:main"
+
+[project.urls]
+Homepage = "https://github.com/glitchhunter/glitchhunter"
+Documentation = "https://glitchhunter.readthedocs.io"
+Repository = "https://github.com/glitchhunter/glitchhunter"
+Issues = "https://github.com/glitchhunter/glitchhunter/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "TCH", # flake8-type-checking
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "B904",  # raise without from inside except (acceptable for re-raises)
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports OK in __init__
+"tests/*" = ["ARG", "TCH"]  # test files can have unused args
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+strict_equality = true
+warn_redundant_casts = true
+warn_unused_configs = true
+show_error_codes = true
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = [
+    "tree_sitter.*",
+    "pynvml",
+    "semgrep.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = [
+    "-ra",
+    "-q",
+    "--strict-markers",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "gpu: marks tests that require GPU",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+omit = [
+    "tests/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
