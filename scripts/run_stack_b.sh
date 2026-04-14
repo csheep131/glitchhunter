@@ -103,17 +103,17 @@ case "$COMMAND" in
     api)
         echo "Starting API server..."
         echo ""
-        cd "$PROJECT_DIR"
-        python -m src.api.server
+        cd "$PROJECT_DIR/src"
+        python3 -m api.server
         ;;
     
     analyze)
         REPO_PATH="${2:-.}"
         echo "Starting analysis for: $REPO_PATH"
         echo ""
-        cd "$PROJECT_DIR"
-        python -c "
-from src.agent.state_machine import build_workflow
+        cd "$PROJECT_DIR/src"
+        python3 -c "
+from agent.state_machine import build_workflow
 workflow = build_workflow()
 result = workflow.run('$REPO_PATH')
 print('Analysis complete!')
@@ -125,9 +125,9 @@ print(f'Errors: {result.get(\"errors\", [])}')
     check)
         echo "Running hardware check..."
         echo ""
-        cd "$PROJECT_DIR"
-        python -c "
-from src.hardware.detector import HardwareDetector
+        cd "$PROJECT_DIR/src"
+        python3 -c "
+from hardware.detector import HardwareDetector
 detector = HardwareDetector()
 profile = detector.detect()
 print(f'Detected Stack: {profile.stack_type.value}')
@@ -141,7 +141,7 @@ detector.shutdown()
     download)
         echo "Downloading Stack B models..."
         echo ""
-        python "$SCRIPT_DIR/download_models.py" --stack-b
+        python3 "$SCRIPT_DIR/download_models.py" --stack-b
         ;;
     
     *)

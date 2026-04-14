@@ -141,8 +141,7 @@ def main() -> None:
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             stream=sys.stdout,
         )
-        logger = logging.getLogger(__name__)
-        logger.warning(f"Failed to load config: {e}, using defaults")
+        logging.warning(f"Failed to load config: {e}, using defaults")
         config = None
 
     # Get host and port from config or use defaults
@@ -155,10 +154,13 @@ def main() -> None:
         port = config.api.port
         reload = config.api.debug
 
-    logger.info(f"Starting GlitchHunter API on {host}:{port}")
+    # Use global logger (defined at module level)
+    import logging as _logging
+    _logger = _logging.getLogger(__name__)
+    _logger.info(f"Starting GlitchHunter API on {host}:{port}")
 
     uvicorn.run(
-        "src.api.server:create_app",
+        "api.server:create_app",
         host=host,
         port=port,
         reload=reload,

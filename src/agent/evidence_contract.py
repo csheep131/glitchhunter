@@ -7,7 +7,7 @@ evidence package required before any automatic bug fix can proceed.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from agent.evidence_types import (
     ConfidenceLevel,
@@ -18,7 +18,9 @@ from agent.evidence_types import (
     RiskClass,
     Scope,
 )
-from agent.hypothesis_agent import Hypothesis
+
+if TYPE_CHECKING:
+    from agent.hypothesis_agent import Hypothesis
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +276,7 @@ class EvidencePackage:
     risk_assessment: RiskAssessment
 
     # Hypotheses
-    hypotheses: List[Hypothesis] = field(default_factory=list)
+    hypotheses: List["Hypothesis"] = field(default_factory=list)
 
     # Evidence quality
     evidence_strength: EvidenceStrength = EvidenceStrength.WEAK
@@ -499,7 +501,7 @@ class EvidencePackageBuilder:
         self._risk_assessment = risk
         return self
 
-    def with_hypotheses(self, hypotheses: List[Hypothesis]) -> "EvidencePackageBuilder":
+    def with_hypotheses(self, hypotheses: List["Hypothesis"]) -> "EvidencePackageBuilder":
         """Set hypotheses."""
         self._hypotheses = hypotheses
         return self
