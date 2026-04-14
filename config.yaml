@@ -12,7 +12,7 @@ hardware:
     models:
       primary:
         name: "qwen3.5-9b"
-        path: "models/Qwen3.5-9B-Instruct-Q4_K_M.gguf"
+        path: "/home/schaf/stuff/offline_llm/models/Qwen3.5-9B-UncensoredHauhauCS-Aggressive-Q4_K_M.gguf"
         context_length: 8192
         n_gpu_layers: 35
         n_threads: 8
@@ -164,13 +164,41 @@ features:
   parallel_inference: false
   deep_security_scan: false
   multi_model_consensus: false
-  
+
   # Für beide Stacks
   ast_analysis: true
   complexity_check: true
   basic_security: true
   patch_generation: true
   sandbox_execution: true
+  
+  # Evidence-Contract (NEW)
+  # Mandatory evidence package before auto-fix
+  evidence_contract: true
+  evidence_gate_enabled: true
+  min_evidence_score: 0.5  # Minimum score for auto-fix
+
+# Evidence Gate Konfiguration (NEW)
+evidence_gate:
+  # Minimum evidence score thresholds by risk class
+  min_score_weak: 0.4      # Minimum for LOW risk
+  min_score_medium: 0.5    # Minimum for MEDIUM risk
+  min_score_high: 0.6      # Minimum for HIGH/CRITICAL risk
+  
+  # Maximum retries before escalation
+  max_retries: 3
+  
+  # Require specific evidence components
+  require_reproduction: true
+  require_affected_symbols: true
+  require_violated_invariant: true
+  require_scope_classification: true
+  require_risk_assessment: true
+  
+  # Hypothesis requirements
+  min_hypotheses: 3
+  max_hypotheses: 5
+  min_avg_hypothesis_confidence: 0.3
 
 # Pfade
 paths:
@@ -179,3 +207,43 @@ paths:
   cache: ".cache"
   temp: ".temp"
   security_rules: "src/security/rules"
+
+# Model Download Configuration
+model_downloads:
+  # Stack A models (GTX 3060, 8GB VRAM)
+  qwen3.5-9b:
+    repo_id: "Qwen/Qwen3.5-9B-Instruct-GGUF"
+    filename: "qwen3.5-9b-instruct-q4_k_m.gguf"
+    description: "Qwen3.5 9B Instruct (Q4_K_M quantization)"
+    size_gb: 5.5
+    stack: "stack_a"
+  
+  phi-4-mini:
+    repo_id: "bartowski/microsoft_Phi-4-mini-instruct-GGUF"
+    filename: "microsoft_Phi-4-mini-instruct-Q4_K_M.gguf"
+    description: "Phi-4-mini Instruct (Q4_K_M quantization)"
+    size_gb: 2.49
+    stack: "stack_a"
+  
+  # Stack B models (RTX 3090, 24GB VRAM)
+  qwen3.5-27b:
+    repo_id: "Qwen/Qwen3.5-27B-Instruct-GGUF"
+    filename: "qwen3.5-27b-instruct-q4_k_m.gguf"
+    description: "Qwen3.5 27B Instruct (Q4_K_M quantization)"
+    size_gb: 16.0
+    stack: "stack_b"
+  
+  deepseek-v3.2-small:
+    repo_id: "deepseek-ai/DeepSeek-V3.2-Small-GGUF"
+    filename: "deepseek-v3.2-small-q4_k_m.gguf"
+    description: "DeepSeek-V3.2 Small (Q4_K_M quantization)"
+    size_gb: 8.0
+    stack: "stack_b"
+  
+  # Embedding model (both stacks)
+  nomic-embed-text:
+    repo_id: "nomic-ai/nomic-embed-text-v1.5-GGUF"
+    filename: "nomic-embed-text-v1.5.f16.gguf"
+    description: "Nomic Embed Text v1.5"
+    size_gb: 0.5
+    stack: "both"

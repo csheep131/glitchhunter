@@ -16,8 +16,25 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get script directory (zsh compatible)
+if [ -n "${ZSH_VERSION:-}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${(%):-%x}")" && pwd)"
+elif [ -n "${BASH_SOURCE:-}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+fi
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Activate virtual environment if it exists (sh compatible)
+if [ -f "$PROJECT_DIR/venv/bin/activate" ]; then
+    . "$PROJECT_DIR/venv/bin/activate"
+elif [ -f "$PROJECT_DIR/.venv/bin/activate" ]; then
+    . "$PROJECT_DIR/.venv/bin/activate"
+fi
+
+# Set PYTHONPATH for src imports
+export PYTHONPATH="${PROJECT_DIR}${PYTHONPATH:+:$PYTHONPATH}"
 
 echo "========================================"
 echo "  GlitchHunter - Stack B (RTX 3090)    "

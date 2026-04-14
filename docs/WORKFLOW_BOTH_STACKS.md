@@ -22,6 +22,76 @@ GlitchHunter is an intelligent code analysis tool that uses **local open-source 
 - **Throughput:** ~200 LOC/minute
 - **10k lines:** 4-8 minutes
 
+## Model Management & Configuration
+
+### Model Download System
+GlitchHunter includes a configurable model download system that automatically fetches quantized GGUF models from HuggingFace based on hardware configuration.
+
+#### Configuration Structure (config.yaml)
+```yaml
+# Model Download Configuration
+model_downloads:
+  # Stack A models (GTX 3060, 8GB VRAM)
+  qwen3.5-9b:
+    repo_id: "Qwen/Qwen3.5-9B-Instruct-GGUF"
+    filename: "qwen3.5-9b-instruct-q4_k_m.gguf"
+    description: "Qwen3.5 9B Instruct (Q4_K_M quantization)"
+    size_gb: 5.5
+    stack: "stack_a"
+  
+  phi-4-mini:
+    repo_id: "microsoft/phi-4-mini-instruct-gguf"
+    filename: "phi-4-mini-instruct-q4_k_m.gguf"
+    description: "Phi-4-mini Instruct (Q4_K_M quantization)"
+    size_gb: 2.5
+    stack: "stack_a"
+  
+  # Stack B models (RTX 3090, 24GB VRAM)
+  qwen3.5-27b:
+    repo_id: "Qwen/Qwen3.5-27B-Instruct-GGUF"
+    filename: "qwen3.5-27b-instruct-q4_k_m.gguf"
+    description: "Qwen3.5 27B Instruct (Q4_K_M quantization)"
+    size_gb: 16.0
+    stack: "stack_b"
+  
+  deepseek-v3.2-small:
+    repo_id: "deepseek-ai/DeepSeek-V3.2-Small-GGUF"
+    filename: "deepseek-v3.2-small-q4_k_m.gguf"
+    description: "DeepSeek-V3.2 Small (Q4_K_M quantization)"
+    size_gb: 8.0
+    stack: "stack_b"
+  
+  # Embedding model (both stacks)
+  nomic-embed-text:
+    repo_id: "nomic-ai/nomic-embed-text-v1.5-GGUF"
+    filename: "nomic-embed-text-v1.5.f16.gguf"
+    description: "Nomic Embed Text v1.5"
+    size_gb: 0.5
+    stack: "both"
+```
+
+#### Download Script Usage
+```bash
+# Download models for specific hardware stack
+python scripts/download_models.py --stack-a      # Download Stack A models
+python scripts/download_models.py --stack-b      # Download Stack B models
+python scripts/download_models.py --all          # Download all models
+python scripts/download_models.py --list         # List available models
+python scripts/download_models.py qwen3.5-9b     # Download specific model
+```
+
+#### Automatic Hardware Detection
+- System detects available GPU and VRAM capacity
+- Automatically selects appropriate model stack
+- Falls back to CPU-only mode if no GPU available
+- Validates model paths match hardware configuration
+
+#### Model Path Resolution
+- Models downloaded to `models/` directory by default
+- Hardware configuration references specific model paths
+- Automatic verification ensures downloaded files match expected paths
+- Support for both HuggingFace Hub API and manual download instructions
+
 ## Complete Workflow Architecture
 
 ```

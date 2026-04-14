@@ -115,6 +115,24 @@ class PathsConfig:
 
 
 @dataclass
+class ModelDownloadConfig:
+    """Configuration for a single model download."""
+
+    repo_id: str
+    filename: str
+    description: str
+    size_gb: float
+    stack: str
+
+
+@dataclass
+class ModelDownloadsConfig:
+    """Configuration for model downloads."""
+
+    models: Dict[str, ModelDownloadConfig]
+
+
+@dataclass
 class Config:
     """
     Main configuration class for GlitchHunter.
@@ -131,6 +149,7 @@ class Config:
         logging: Logging configuration
         features: Feature toggle configuration
         paths: File path configuration
+        model_downloads: Model downloads configuration
     """
 
     hardware: Dict[str, HardwareStackConfig]
@@ -141,6 +160,7 @@ class Config:
     logging: LoggingConfig
     features: FeaturesConfig
     paths: PathsConfig
+    model_downloads: ModelDownloadsConfig
 
     @classmethod
     def load(cls, config_path: Optional[Path] = None) -> "Config":
@@ -272,6 +292,14 @@ class Config:
                 security_rules=paths_data.get("security_rules", "src/security/rules"),
             )
 
+            # Parse model downloads config
+            model_downloads_data = data.get("model_downloads", {})
+            model_downloads = {}
+            for model_key, model_data in model_downloads_data.items():
+                model_downloads[model_key] = ModelDownloadConfig(**model_data)
+            
+            model_downloads_config = ModelDownloadsConfig(models=model_downloads)
+
             return cls(
                 hardware=hardware,
                 prefilter=prefilter,
@@ -281,6 +309,7 @@ class Config:
                 logging=logging_config,
                 features=features,
                 paths=paths,
+                model_downloads=model_downloads_config,
             )
 
         except TypeError as e:
@@ -318,6 +347,34 @@ class Config:
             Name of the default stack (stack_a)
         """
         return "stack_a"
+
+    def get_model_download_info(self, model_key: str) -> Optional[ModelDownloadConfig]:
+        """
+        Get download information for a specific model.
+
+        Args:
+            model_key: Key of the model (e.g., "qwen3.5-9b")
+
+        Returns:
+            ModelDownloadConfig if found, None otherwise
+        """
+        return self.model_downloads.models.get(model_key)
+
+    def get_models_for_stack(self, stack_name: str) -> Dict[str, ModelDownloadConfig]:
+        """
+        Get all models for a specific hardware stack.
+
+        Args:
+            stack_name: Name of the hardware stack (e.g., "stack_a")
+
+        Returns:
+            Dictionary of model configurations for the stack
+        """
+        return {
+            key: config
+            for key, config in self.model_downloads.models.items()
+            if config.stack == stack_name or config.stack == "both"
+        }
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -390,11 +447,22 @@ class Config:
                 "temp": self.paths.temp,
                 "security_rules": self.paths.security_rules,
             },
+            "model_downloads": {
+                key: {
+                    "repo_id": config.repo_id,
+                    "filename": config.filename,
+                    "description": config.description,
+                    "size_gb": config.size_gb,
+                    "stack": config.stack,
+                }
+                for key, config in self.model_downloads.models.items()
+            },
         }
 
     def __str__(self) -> str:
         """String representation of configuration."""
         return (
             f"Config(hardware_stacks={list(self.hardware.keys())}, "
-            f"default_stack={self.get_default_stack()})"
+            f"default_stack={self.get_default_stack()}, "
+            f"models={list(self.model_downloads.models.keys())})"
         )

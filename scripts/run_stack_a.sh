@@ -16,8 +16,25 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get script directory (zsh compatible)
+if [ -n "${ZSH_VERSION:-}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${(%):-%x}")" && pwd)"
+elif [ -n "${BASH_SOURCE:-}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+fi
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Activate virtual environment if it exists (sh compatible)
+if [ -f "$PROJECT_DIR/venv/bin/activate" ]; then
+    . "$PROJECT_DIR/venv/bin/activate"
+elif [ -f "$PROJECT_DIR/.venv/bin/activate" ]; then
+    . "$PROJECT_DIR/.venv/bin/activate"
+fi
+
+# Set PYTHONPATH for src imports
+export PYTHONPATH="${PROJECT_DIR}${PYTHONPATH:+:$PYTHONPATH}"
 
 echo "========================================"
 echo "  GlitchHunter - Stack A (GTX 3060)    "
@@ -29,13 +46,13 @@ export GLITCHHUNTER_STACK="stack_a"
 export GLITCHHUNTER_MODE="sequential"
 
 # Model paths
-export MODEL_ANALYZER="$PROJECT_DIR/models/qwen3.5-9b-instruct-q4_k_m.gguf"
-export MODEL_VERIFIER="$PROJECT_DIR/models/phi-4-mini-instruct-q4_k_m.gguf"
+export MODEL_ANALYZER="$HOME/stuff/offline_llm/models/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf"
+export MODEL_VERIFIER="$HOME/stuff/offline_llm/models/microsoft_Phi-4-mini-instruct-Q4_K_M.gguf"
 
 # Check models exist
 if [ ! -f "$MODEL_ANALYZER" ]; then
     echo "ERROR: Analyzer model not found: $MODEL_ANALYZER"
-    echo "Run: python scripts/download_models.py --stack-a"
+    echo "Run: python scripts/download_models.py qwen3.5-9b-uncensored-hauCS"
     exit 1
 fi
 
@@ -49,7 +66,7 @@ echo "Hardware Profile: Stack A (GTX 3060, 8GB)"
 echo "Execution Mode: Sequential"
 echo ""
 echo "Models:"
-echo "  Analyzer: Qwen3.5-9B"
+echo "  Analyzer: Qwen3.5-9B Uncensored (hauCS Aggressive)"
 echo "  Verifier: Phi-4-mini"
 echo ""
 
@@ -89,7 +106,7 @@ case "$COMMAND" in
         echo "Starting API server..."
         echo ""
         cd "$PROJECT_DIR"
-        python -m src.api.server
+        python3 -m src.api.server
         ;;
     
     analyze)
@@ -97,7 +114,7 @@ case "$COMMAND" in
         echo "Starting analysis for: $REPO_PATH"
         echo ""
         cd "$PROJECT_DIR"
-        python -c "
+        python3 -c "
 from src.agent.state_machine import build_workflow
 workflow = build_workflow()
 result = workflow.run('$REPO_PATH')
