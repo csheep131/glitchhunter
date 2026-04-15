@@ -25,6 +25,7 @@ class AnalyzeRequest(BaseModel):
     scan_security: bool = Field(True, description="Run security scans")
     scan_correctness: bool = Field(True, description="Run correctness scans")
     generate_patches: bool = Field(True, description="Generate patches for issues")
+    index_mcp: bool = Field(False, description="Index project with SocratiCode before scan")
     max_iterations: int = Field(5, description="Maximum patch iterations")
 
     model_config = {
@@ -312,3 +313,65 @@ class AnalysisEvent(BaseModel):
             }
         }
     }
+
+
+# =============================================================================
+# TUI Data Models
+# =============================================================================
+
+
+class StackInfo(BaseModel):
+    """Information about current hardware stack."""
+    stack_type: str = Field(..., description="Stack type (stack_a/stack_b)")
+    gpu_name: str = Field(..., description="GPU name")
+    vram_gb: int = Field(..., description="VRAM in GB")
+    mode: str = Field(..., description="Execution mode (sequential/parallel)")
+    available: bool = Field(True, description="Whether stack is available")
+
+
+class ModelInfo(BaseModel):
+    """Information about an AI model."""
+    name: str = Field(..., description="Model name")
+    role: str = Field(..., description="Model role (analyzer/verifier)")
+    path: str = Field(..., description="Path to model file")
+    available: bool = Field(..., description="Whether model is downloaded")
+    size_gb: Optional[float] = Field(None, description="Model size in GB")
+
+
+class LlamaStatus(BaseModel):
+    """Llama.cpp server status."""
+    running: bool = Field(..., description="Whether server is running")
+    response_time_ms: Optional[int] = Field(None, description="Last response time")
+    load_percent: Optional[int] = Field(None, description="Server load")
+    port: int = Field(8000, description="Server port")
+
+
+class SystemResources(BaseModel):
+    """System resource usage."""
+    cpu_percent: float = Field(..., description="CPU usage percentage")
+    ram_used_gb: float = Field(..., description="RAM used in GB")
+    ram_total_gb: float = Field(..., description="RAM total in GB")
+    gpu_temp_c: Optional[int] = Field(None, description="GPU temperature")
+    vram_used_gb: Optional[float] = Field(None, description="VRAM used in GB")
+    vram_total_gb: Optional[float] = Field(None, description="VRAM total in GB")
+
+
+class SocratiCodeStatus(BaseModel):
+    """SocratiCode MCP integration status."""
+    enabled: bool = Field(..., description="Integration enabled")
+    connected: bool = Field(..., description="Connected to MCP server")
+    server_url: str = Field(..., description="MCP server URL")
+    indexed_projects: int = Field(0, description="Number of indexed projects")
+    features: List[str] = Field(default_factory=list, description="Available features")
+
+
+class CompleteStatus(BaseModel):
+    """Complete system status for TUI."""
+    api_online: bool = Field(..., description="API is online")
+    current_stack: StackInfo = Field(..., description="Current stack info")
+    available_stacks: List[StackInfo] = Field(..., description="All available stacks")
+    models: List[ModelInfo] = Field(..., description="Available models")
+    llama: LlamaStatus = Field(..., description="Llama server status")
+    socraticode: SocratiCodeStatus = Field(..., description="SocratiCode MCP status")
+    system: SystemResources = Field(..., description="System resources")
+    uptime_seconds: int = Field(..., description="API uptime in seconds")

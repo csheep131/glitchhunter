@@ -214,3 +214,131 @@ rules:
       owasp: A08:2021-Software and Data Integrity Failures
       cwe: CWE-502
       category: security
+
+  # Correctness: Missing error handling
+  - id: python-missing-error-handling
+    patterns:
+      - pattern: |
+          try:
+            ...
+          except $EXCEPTION:
+            pass
+    message: >
+      Bare except clause with pass silently swallows exceptions.
+      Log the exception or handle it properly.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      category: correctness
+      cwe: CWE-324
+
+  # Correctness: Resource not closed
+  - id: python-resource-not-closed
+    patterns:
+      - pattern: |
+          $VAR = open($FILE, ...)
+          ...
+      - pattern-not-inside: |
+          with open(...) as $VAR:
+            ...
+    message: >
+      File opened without context manager.
+      Use 'with open(...)' to ensure proper cleanup.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      category: correctness
+      cwe: CWE-775
+
+  # Correctness: Mutable default argument
+  - id: python-mutable-default-argument
+    patterns:
+      - pattern: |
+          def $FUNC(..., $ARG=[]):
+              ...
+      - pattern-not: |
+          def $FUNC(..., $ARG=[]):
+              ...
+              $ARG = [...]
+    message: >
+      Mutable default argument (list/dict) can cause unexpected behavior.
+      Use None as default and create new instance inside function.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      category: correctness
+      cwe: CWE-398
+
+  # Correctness: Uninitialized variable
+  - id: python-uninitialized-variable
+    pattern: |
+      if $COND:
+          $VAR = $VALUE
+      ...
+      return $VAR
+    message: >
+      Variable may be used uninitialized if condition is False.
+      Initialize variable before the conditional.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      category: correctness
+      cwe: CWE-457
+
+  # Security: Path traversal
+  - id: python-path-traversal-open
+    patterns:
+      - pattern: open($PATH, ...)
+      - metavariable-pattern:
+          metavariable: $PATH
+          patterns:
+            - pattern: |
+                request.$GETTER
+    message: >
+      Potential path traversal: user input used in file path.
+      Validate and sanitize file paths.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      owasp: A01:2021-Broken Access Control
+      cwe: CWE-22
+      category: security
+
+  # Correctness: Race condition with file check
+  - id: python-race-condition-file-check
+    pattern: |
+      if os.path.exists($PATH):
+          ...
+          open($PATH, ...)
+    message: >
+      TOCTOU race condition: file check followed by file operation.
+      Use try/except or atomic operations.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      category: correctness
+      cwe: CWE-367
+
+  # Security: Weak random for security
+  - id: python-weak-random-security
+    patterns:
+      - pattern: random.$FUNC($ARGS)
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: (random|choice|randint|randrange|sample)
+    message: >
+      Weak random number generator used.
+      Use secrets module for security-critical operations.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      owasp: A02:2021-Cryptographic Failures
+      cwe: CWE-330
+      category: security

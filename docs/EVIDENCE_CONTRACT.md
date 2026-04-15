@@ -2,7 +2,8 @@
 
 **Version:** 1.0  
 **Datum:** 14. April 2026  
-**Status:** Implementiert
+**Status:** ✅ Implementiert  
+**Single Source of Truth:** [STATE_MACHINE_STATUS.md](STATE_MACHINE_STATUS.md) für Gesamt-Status
 
 ---
 

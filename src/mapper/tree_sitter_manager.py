@@ -534,8 +534,7 @@ class TreeSitterParserManager:
                 logger.warning(f"Unsupported language: {language}")
                 return None
 
-            parser = Parser()
-            parser.set_language(lang)
+            parser = Parser(lang)
 
             self._languages[language] = lang
             self._parsers[language] = parser

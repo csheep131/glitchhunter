@@ -11,7 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from mapper.symbol_graph import SymbolGraph, EDGE_TYPE_CALLS, EDGE_TYPE_IMPORTS, EDGE_TYPE_EXTENDS, EDGE_TYPE_IMPLEMENTS, EDGE_TYPE_MEMBER_OF, EDGE_TYPE_DEFINES
+from mapper.symbol_graph import SymbolGraph, SymbolNode, EDGE_TYPE_CALLS, EDGE_TYPE_IMPORTS, EDGE_TYPE_EXTENDS, EDGE_TYPE_IMPLEMENTS, EDGE_TYPE_MEMBER_OF, EDGE_TYPE_DEFINES
+from core.ignore import IgnoreManager
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +107,7 @@ class RepositoryMapper:
         self.languages: Set[str] = set()
         self._parsers: Dict[str, Any] = {}
         self._parser_cache: Dict[str, Any] = {}
+        self.ignore_manager = IgnoreManager(repo_path)
 
         logger.debug(f"RepositoryMapper initialized for {repo_path}")
 
@@ -116,7 +118,7 @@ class RepositoryMapper:
         Returns:
             RepoManifest with repository metadata
         """
-        logger.info(f"Scanning repository: {self.repo_path}")
+        logger.info(f"📂 Scanning repository: {self.repo_path}")
 
         manifest = RepoManifest(repo_path=str(self.repo_path))
         file_count = 0
@@ -124,6 +126,7 @@ class RepositoryMapper:
         detected_languages: Set[str] = set()
 
         # Detect languages and count files
+        logger.info("   └─ Detecting languages and counting files...")
         for lang, extensions in LANGUAGE_EXTENSIONS.items():
             lang_file_count = 0
             for ext in extensions:
@@ -152,9 +155,11 @@ class RepositoryMapper:
         manifest.total_lines = total_lines
 
         # Find entry points
+        logger.info("   └─ Finding entry points...")
         manifest.entry_points = self._find_entry_points()
 
         # Read project dependencies
+        logger.info("   └─ Reading project dependencies...")
         manifest.dependencies = self._read_project_dependencies()
 
         manifest.metadata = {
@@ -166,7 +171,7 @@ class RepositoryMapper:
         }
 
         logger.info(
-            f"Repository scan complete: {file_count} files, "
+            f"✅ Repository scan complete: {file_count} files, "
             f"{total_lines} lines, languages: {manifest.languages}"
         )
 
@@ -178,8 +183,9 @@ class RepositoryMapper:
 
         Extracts symbols from all files and adds them to the symbol graph.
         """
-        logger.info("Parsing all files in repository")
+        logger.info("📄 Parsing all files in repository...")
 
+        symbols_parsed = 0
         for language in self.languages:
             extensions = LANGUAGE_EXTENSIONS.get(language, [])
             for ext in extensions:
@@ -189,11 +195,13 @@ class RepositoryMapper:
 
                     try:
                         symbols = self.parse_file(file_path)
-                        logger.debug(f"Parsed {file_path}: {len(symbols)} symbols")
+                        symbols_parsed += len(symbols)
+                        if len(symbols) > 0:
+                            logger.debug(f"  ✓ {file_path.name}: {len(symbols)} symbols")
                     except Exception as e:
                         logger.warning(f"Failed to parse {file_path}: {e}")
 
-        logger.info(f"Parsing complete: {len(self.symbol_graph)} symbols extracted")
+        logger.info(f"✅ Parsing complete: {symbols_parsed} symbols extracted")
 
     def build_graph(self) -> SymbolGraph:
         """
@@ -204,19 +212,22 @@ class RepositoryMapper:
         Returns:
             Built SymbolGraph
         """
-        logger.info("Building symbol graph")
+        logger.info("🕸️  Building symbol graph (relationships between symbols)...")
 
         # Parse all files first
         self.parse_all_files()
 
         # Extract edges (relationships) between symbols
+        logger.info("   └─ Extracting import relationships...")
         self._extract_import_edges()
+        logger.info("   └─ Extracting call relationships...")
         self._extract_call_edges()
+        logger.info("   └─ Extracting inheritance relationships...")
         self._extract_inheritance_edges()
 
         stats = self.symbol_graph.get_stats()
         logger.info(
-            f"Symbol graph built: {stats['symbol_count']} symbols, "
+            f"✅ Symbol graph complete: {stats['symbol_count']} symbols, "
             f"{stats['edge_count']} edges, {stats['file_count']} files"
         )
 
@@ -244,6 +255,8 @@ class RepositoryMapper:
         """
         Parse a file and extract symbols.
 
+        Uses Tree-sitter for AST-based symbol extraction.
+
         Args:
             file_path: Path to the file
 
@@ -256,8 +269,10 @@ class RepositoryMapper:
 
         language = self.get_file_language(file_path)
         if language == "unknown":
-            logger.debug(f"Unsupported language for {file_path}")
+            logger.debug(f"  ⊘ {file_path.name}: unsupported language")
             return []
+        
+        logger.debug(f"  🌳 {file_path.name}: parsing with Tree-sitter ({language})")
 
         try:
             if language == "python":
@@ -861,8 +876,7 @@ class RepositoryMapper:
             else:
                 return None
 
-            parser = Parser()
-            parser.set_language(lang)
+            parser = Parser(lang)
             self._parser_cache[language] = parser
             return parser
 
@@ -1166,34 +1180,7 @@ class RepositoryMapper:
 
     def _should_ignore(self, file_path: Path) -> bool:
         """Check if file should be ignored (hidden, in .git, etc.)."""
-        path_str = str(file_path)
-
-        ignore_patterns = [
-            "/.git/",
-            "/.svn/",
-            "/.hg/",
-            "/node_modules/",
-            "/__pycache__/",
-            "/.venv/",
-            "/venv/",
-            "/env/",
-            "/.env/",
-            "/dist/",
-            "/build/",
-            "/target/",
-            "/.cache/",
-            "*.pyc",
-            "*.pyo",
-            "*.so",
-            "*.dll",
-            "*.exe",
-        ]
-
-        for pattern in ignore_patterns:
-            if pattern in path_str:
-                return True
-
-        return False
+        return self.ignore_manager.should_ignore(file_path)
 
     def _extract_import_edges(self) -> None:
         """Extract IMPORTS edges between symbols."""

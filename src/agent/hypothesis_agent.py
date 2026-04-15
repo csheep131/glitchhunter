@@ -16,6 +16,7 @@ import networkx as nx
 from analysis.cfg_builder import ControlFlowGraph
 from analysis.dfg_builder import DataFlowGraph, TaintPath
 from core.logging_config import get_logger
+from inference.engine import InferenceEngine
 
 from agent.evidence_contract import (
     AffectedSymbols,
@@ -410,8 +411,18 @@ class HypothesisAgent:
         elif "race" in candidate.bug_type.lower() or "concurrent" in candidate.bug_type.lower():
             hypotheses.extend(self.generate_for_race_condition(candidate, data_flow_graph))
         else:
-            # Generic hypothesis generation
-            hypotheses.extend(self._generate_generic_hypotheses(candidate, data_flow_graph))
+            # Try AI-enhanced generation if LLM is available
+            if self._llm_client:
+                logger.info(f"🤖 LLM: Generating hypotheses for {candidate.bug_type}...")
+                hypotheses.extend(self._generate_with_llm(candidate))
+                
+                if not hypotheses:
+                    logger.info("⚠️  LLM produced no hypotheses, using generic fallback...")
+
+            # Fallback to generic if no LLM or if LLM failed to produce results
+            if not hypotheses:
+                logger.info("💡 Using generic hypothesis generation...")
+                hypotheses.extend(self._generate_generic_hypotheses(candidate, data_flow_graph))
 
         # Rank hypotheses
         ranked = self.rank_hypotheses(hypotheses)
@@ -576,25 +587,38 @@ class HypothesisAgent:
 
     def _analyze_taint_paths(
         self,
-        data_flow_graph: DataFlowGraph,
+        data_flow_graph: Optional[DataFlowGraph],
         candidate: BugCandidate,
     ) -> List[TaintPath]:
         """
         Analyze taint paths for a candidate.
-
+        
         Args:
-            data_flow_graph: Data-flow graph
+            data_flow_graph: Data-flow graph (can be None for fallback mode)
             candidate: Bug candidate
-
+            
         Returns:
-            List of relevant taint paths
+            List of taint paths (empty if DFG not available)
         """
         taint_paths: List[TaintPath] = []
 
+        # NEW: None-check to prevent crashes
+        if data_flow_graph is None:
+            logger.debug(f"No DFG available for {candidate.file_path}, skipping taint analysis")
+            return []
+        
+        # NEW: Check for empty taint sources
+        if not hasattr(data_flow_graph, 'taint_sources') or not data_flow_graph.taint_sources:
+            logger.debug(f"No taint sources in DFG for {candidate.file_path}")
+            return []
+
         # Find taint sources near the candidate
         for source in data_flow_graph.taint_sources:
-            paths = data_flow_graph.track_taint(source.node)
-            taint_paths.extend(paths)
+            try:
+                paths = data_flow_graph.track_taint(source.node)
+                taint_paths.extend(paths)
+            except Exception as e:
+                logger.warning(f"Taint tracking failed for {source.node}: {e}")
 
         return taint_paths
 
@@ -667,6 +691,143 @@ class HypothesisAgent:
 
         return min(1.0, base_confidence)
 
+    def _generate_with_llm(self, candidate: BugCandidate) -> List[Hypothesis]:
+        """Generate hypotheses using LLM analysis of the code."""
+        if not self._llm_client:
+            return []
+            
+        code_context = self._get_code_snippet(candidate.file_path, candidate.line)
+        if not code_context:
+            return []
+            
+        prompt = f"""Du bist ein Security-Experte. Analysiere den folgenden Code-Ausschnitt auf potenzielle Schwachstellen.
+        
+CODE ({candidate.file_path}):
+```python
+{code_context}
+```
+
+BEOBACHTUNG (Candidate):
+Typ: {candidate.bug_type}
+Beschreibung: {candidate.description}
+Zeile: {candidate.line}
+
+AUFGABE:
+Generiere bis zu 3 spezifische Security-Hypothesen, was hier schiefgelaufen sein könnte.
+Konzentriere dich auf kritische Fehler wie Injections, Sandbox-Bypasses oder Logikfehler.
+
+ANTWORT (JSON Format):
+{{
+    "hypotheses": [
+        {{
+            "title": "...",
+            "description": "...",
+            "type": "command_injection" | "sandbox_bypass" | "logic_error" | "other",
+            "confidence": 0.0-1.0,
+            "severity": "Low" | "Medium" | "High" | "Critical"
+        }}
+    ]
+}}
+"""
+        try:
+            if isinstance(self._llm_client, InferenceEngine):
+                response_text = self._llm_client.chat_simple(
+                    system_prompt="Du bist ein kreativer Bug-Hunter.",
+                    user_message=prompt,
+                    temperature=0.4
+                )
+            else:
+                response_text = self._llm_client.generate(prompt)
+
+            import json
+            import uuid
+            import re
+
+            # Robusteres JSON-Parsing
+            clean_json = response_text.strip()
+            
+            # Versuch 1: Extract from markdown code block
+            if "```json" in response_text:
+                match = re.search(r'```json\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+                if match:
+                    clean_json = match.group(1)
+            
+            # Versuch 2: Extract first JSON object
+            elif "{" in response_text:
+                # Finde erstes { und letztes } und versuche zu parsen
+                start = response_text.find("{")
+                end = response_text.rfind("}") + 1
+                if start >= 0 and end > start:
+                    clean_json = response_text[start:end]
+            
+            # Versuch 3: Parse mit Fehlerbehandlung für "extra data"
+            try:
+                data = json.loads(clean_json)
+            except json.JSONDecodeError as e:
+                # Bei "Extra data" Fehler: versuche nur ersten Teil zu parsen
+                if "Extra data" in str(e):
+                    # Versuche Zeile für Zeile zu parsen bis zum Fehler
+                    lines = clean_json.split('\n')
+                    for i in range(len(lines), 0, -1):
+                        try:
+                            data = json.loads('\n'.join(lines[:i]))
+                            break
+                        except json.JSONDecodeError:
+                            continue
+                    else:
+                        logger.warning(f"JSON parsing failed completely: {e}")
+                        return []
+                else:
+                    logger.warning(f"JSON parsing error: {e}")
+                    return []
+            
+            results = []
+
+            for h_dict in data.get("hypotheses", []):
+                h = Hypothesis(
+                    id=f"hypo_{uuid.uuid4().hex[:8]}",
+                    title=h_dict.get("title", "AI generated hypothesis"),
+                    description=h_dict.get("description", "") + f"\n\nLocation: {candidate.file_path}:{candidate.line}",
+                    hypothesis_type=HypothesisType.COMMAND_INJECTION if h_dict.get("type") == "command_injection" else HypothesisType.AUTH_BYPASS_PARAMETER,
+                    candidate_id=candidate.id,
+                    affected_symbols=[candidate.symbol_name],
+                    confidence=float(h_dict.get("confidence", 0.5)),
+                    severity=Severity.HIGH if h_dict.get("severity") == "High" else Severity.MEDIUM,
+                )
+                results.append(h)
+                
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error in LLM hypothesis generation: {e}")
+            # Return empty list - fallback will be triggered by caller
+            return []
+        finally:
+            # Log response for debugging
+            logger.debug(f"LLM response length: {len(response_text) if 'response_text' in locals() else 0} chars")
+
+    def _get_code_snippet(self, file_path: str, line: int, window: int = 50) -> Optional[str]:
+        """Read a code snippet around a line."""
+        import os
+        if not os.path.exists(file_path):
+            return None
+            
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                
+            start = max(0, line - window)
+            end = min(len(lines), line + window)
+            
+            snippet_lines = []
+            for i in range(start, end):
+                snippet_lines.append(f"{lines[i].rstrip()}")
+                
+            return "\n".join(snippet_lines)
+        except Exception as e:
+            logger.error(f"Error reading code snippet: {e}")
+            return None
+
     def _generate_generic_hypotheses(
         self,
         candidate: BugCandidate,
@@ -684,54 +845,134 @@ class HypothesisAgent:
         """
         hypotheses: List[Hypothesis] = []
 
+        # Get actual code context for more specific hypotheses
+        code_context = self._get_code_snippet(candidate.file_path, candidate.line)
+        
         # Create a generic hypothesis based on available data
         taint_paths = self._analyze_taint_paths(data_flow_graph, candidate)
 
         if taint_paths:
-            # Data flow vulnerability
+            # Data flow vulnerability - more specific
             hypothesis = Hypothesis(
                 id=f"hypo_{uuid.uuid4().hex[:8]}",
-                title="Potential data flow vulnerability",
+                title="Ungenutzter Taint-Pfad erkannt",
                 description=(
-                    f"Analysis indicates a potential vulnerability in the data flow "
-                    f"at {candidate.file_path}:{candidate.line}. "
-                    f"Untrusted data may reach a sensitive sink."
+                    f"Data-Flow-Analyse zeigt einen potenziellen Taint-Pfad von einer Quelle zu einer Senke. "
+                    f"Der Pfad hat Länge {taint_paths[0].length} und ist {'nicht ' if taint_paths[0].is_vulnerable else ''}sanitized. "
+                    f"Location: {candidate.file_path}:{candidate.line}. "
+                    f"Betroffenes Symbol: {candidate.symbol_name}."
                 ),
                 hypothesis_type=HypothesisType.SQL_INJECTION_USER_INPUT,
                 candidate_id=candidate.id,
                 affected_symbols=[candidate.symbol_name],
                 data_flow_path=taint_paths[0].path if taint_paths else None,
-                confidence=0.4,
+                confidence=0.5 if taint_paths[0].length <= 3 else 0.4,
                 evidence_required=[
-                    "Verify data flow path",
-                    "Check for sanitization",
-                    "Review sink usage",
+                    "Konkreten Datenfluss von Quelle zu Senke verifizieren",
+                    "Fehlende Sanitisierung nachweisen",
+                    "Sink-Nutzung im Sicherheitskontext prüfen",
+                ],
+                severity=Severity.HIGH if taint_paths[0].is_vulnerable else Severity.MEDIUM,
+            )
+            hypotheses.append(hypothesis)
+        elif code_context:
+            # Code-basierte Hypothesen wenn kein Taint-Pfad, aber Code vorhanden
+            # Prüfe auf häufige Muster im Code-Kontext
+            
+            # Pattern 1: String-Formatierung im SQL-Kontext
+            if "execute" in code_context.lower() or "query" in code_context.lower():
+                hypothesis = Hypothesis(
+                    id=f"hypo_{uuid.uuid4().hex[:8]}",
+                    title="Potenzielle SQL-Injection durch String-Formatierung",
+                    description=(
+                        f"Code enthält SQL-Ausführungskontext bei {candidate.file_path}:{candidate.line}. "
+                        f"Symbol: {candidate.symbol_name}. "
+                        f"Überprüfe ob String-Formatierung (f-strings, .format(), %) anstelle von "
+                        f"parametrisierten Queries verwendet wird."
+                    ),
+                    hypothesis_type=HypothesisType.SQL_INJECTION_DYNAMIC_QUERY,
+                    candidate_id=candidate.id,
+                    affected_symbols=[candidate.symbol_name],
+                    confidence=0.45,
+                    evidence_required=[
+                        "SQL-Query mit String-Formatierung identifizieren",
+                        "User-Input im Query-Kontext nachweisen",
+                        "Fehlende Parametrisierung bestätigen",
+                    ],
+                    severity=Severity.CRITICAL,
+                )
+                hypotheses.append(hypothesis)
+            
+            # Pattern 2: File-Operationen
+            if "open" in code_context.lower() or "read" in code_context.lower() or "write" in code_context.lower():
+                hypothesis = Hypothesis(
+                    id=f"hypo_{uuid.uuid4().hex[:8]}",
+                    title="Potenzielle unsichere Datei-Operation",
+                    description=(
+                        f"Code enthält Datei-Operationen bei {candidate.file_path}:{candidate.line}. "
+                        f"Symbol: {candidate.symbol_name}. "
+                        f"Überprüfe ob Dateipfade validiert werden und ob es zu Path-Traversal kommen kann."
+                    ),
+                    hypothesis_type=HypothesisType.PATH_TRAVERSAL,
+                    candidate_id=candidate.id,
+                    affected_symbols=[candidate.symbol_name],
+                    confidence=0.4,
+                    evidence_required=[
+                        "Dateipfad-Herkunft analysieren",
+                        "Validierungslogik prüfen",
+                        "Path-Normalisierung verifizieren",
+                    ],
+                    severity=Severity.HIGH,
+                )
+                hypotheses.append(hypothesis)
+            
+            # Pattern 3: External calls
+            if "subprocess" in code_context.lower() or "os.system" in code_context.lower() or "eval" in code_context.lower():
+                hypothesis = Hypothesis(
+                    id=f"hypo_{uuid.uuid4().hex[:8]}",
+                    title="Potenzielle Command-Injection",
+                    description=(
+                        f"Code enthält System-Aufruf oder Code-Evaluation bei {candidate.file_path}:{candidate.line}. "
+                        f"Symbol: {candidate.symbol_name}. "
+                        f"Überprüfe ob externe Eingaben ohne Validierung an System-Commands übergeben werden."
+                    ),
+                    hypothesis_type=HypothesisType.COMMAND_INJECTION,
+                    candidate_id=candidate.id,
+                    affected_symbols=[candidate.symbol_name],
+                    confidence=0.5,
+                    evidence_required=[
+                        "System-Call mit User-Input identifizieren",
+                        "Fehlende Input-Validierung nachweisen",
+                        "Shell-Injection-Möglichkeit prüfen",
+                    ],
+                    severity=Severity.CRITICAL,
+                )
+                hypotheses.append(hypothesis)
+
+        # Fallback: Sehr generische Hypothese nur wenn nichts anderes gefunden
+        if len(hypotheses) < 2:
+            hypothesis = Hypothesis(
+                id=f"hypo_{uuid.uuid4().hex[:8]}",
+                title="Statische Analyse: Unklares Sicherheitsmuster",
+                description=(
+                    f"Statische Analyse hat ein potenzielles Sicherheitsproblem bei "
+                    f"{candidate.file_path}:{candidate.line} identifiziert. "
+                    f"Symbol: {candidate.symbol_name}. "
+                    f"Der genaue Bug-Typ ist unklar, aber der Code zeigt Muster die typischerweise "
+                    f"mit Sicherheitslücken assoziiert werden. Manuelle Überprüfung empfohlen."
+                ),
+                hypothesis_type=HypothesisType.AUTH_BYPASS_PARAMETER,
+                candidate_id=candidate.id,
+                affected_symbols=[candidate.symbol_name],
+                confidence=0.3,
+                evidence_required=[
+                    "Code-Kontext manuell analysieren",
+                    "Datenfluss im Detail prüfen",
+                    "Sicherheitsannahmen dokumentieren",
                 ],
                 severity=Severity.MEDIUM,
             )
             hypotheses.append(hypothesis)
-
-        # Add a generic control-flow hypothesis
-        hypothesis = Hypothesis(
-            id=f"hypo_{uuid.uuid4().hex[:8]}",
-            title="Potential control-flow vulnerability",
-            description=(
-                f"Control-flow analysis indicates a potential issue at "
-                f"{candidate.file_path}:{candidate.line}. "
-                f"Execution path may be manipulated."
-            ),
-            hypothesis_type=HypothesisType.AUTH_BYPASS_PARAMETER,
-            candidate_id=candidate.id,
-            affected_symbols=[candidate.symbol_name],
-            confidence=0.3,
-            evidence_required=[
-                "Review control flow",
-                "Check branch conditions",
-                "Verify input validation",
-            ],
-            severity=Severity.MEDIUM,
-        )
-        hypotheses.append(hypothesis)
 
         return hypotheses
 

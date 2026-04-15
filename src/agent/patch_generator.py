@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from inference.engine import InferenceEngine, InferenceConfig, InferenceResult
+from inference.engine import InferenceEngine
 
 logger = logging.getLogger(__name__)
 
@@ -119,11 +119,9 @@ ANTWORT (JSON):
         """Initialisiert Inference-Engine."""
         if self.model_path:
             self._engine = InferenceEngine(
-                model_path=self.model_path,
-                config=InferenceConfig(
-                    temperature=0.2,  # Etwas höher für Kreativität
-                    max_tokens=2048,
-                ),
+                model_name=self.model_path,
+                temperature=0.2,  # Etwas höher für Kreativität
+                max_tokens=2048,
             )
     
     def generate(

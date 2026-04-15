@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 from core.config import Config
 from core.logging_config import setup_logging
 from api.routes import router
+from agent.state_machine import build_workflow
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         setup_logging(config.logging)
 
         logger.info("Configuration loaded successfully")
+        
+        # Initialize State Machine
+        logger.info("Initializing State Machine...")
+        state_machine = build_workflow()
+        app.state.state_machine = state_machine
 
     except Exception as e:
         logger.error(f"Startup error: {e}")

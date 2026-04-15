@@ -70,6 +70,7 @@ class InferenceEngine:
         model_name: str = "default",
         temperature: float = 0.7,
         max_tokens: int = 2048,
+        api_url: Optional[str] = None,
     ) -> None:
         """
         Initialize inference engine.
@@ -78,30 +79,63 @@ class InferenceEngine:
             model_name: Name identifier for the model
             temperature: Default temperature for generation
             max_tokens: Maximum tokens for generation
+            api_url: Optional URL for remote OpenAI-compatible API
         """
         self.model_name = model_name
         self._model: Optional[Any] = None
         self._temperature = temperature
         self._max_tokens = max_tokens
+        self._api_url = api_url
         self._is_loaded = False
+        self._is_remote = False
 
-        logger.debug(f"InferenceEngine initialized for model: {model_name}")
+        logger.debug(
+            f"InferenceEngine initialized for model: {model_name} "
+            f"(remote: {api_url if api_url else 'No'})"
+        )
 
-    def load_model(self, model_path: str, **kwargs) -> None:
+    def load_model(self, model_path: Optional[str] = None, **kwargs) -> None:
         """
-        Load a model from file.
+        Load a model (local or remote).
 
         Args:
-            model_path: Path to GGUF model file
-            **kwargs: Additional arguments for llama-cpp-python
-
-        Raises:
-            InferenceError: If model loading fails
+            model_path: Path to GGUF model file (local only)
+            **kwargs: Additional arguments
         """
+        if self._api_url:
+            self._load_remote(**kwargs)
+        elif model_path:
+            self._load_local(model_path, **kwargs)
+        else:
+            raise InferenceError(
+                "Either model_path or api_url must be provided",
+                model_name=self.model_name
+            )
+
+    def _load_remote(self, **kwargs) -> None:
+        """Connect to remote OpenAI-compatible API."""
+        try:
+            from inference.openai_api import OpenAIAPI
+            
+            logger.info(f"Connecting to remote LLM server at {self._api_url}")
+            self._model = OpenAIAPI(base_url=self._api_url, **kwargs)
+            self._is_remote = True
+            self._is_loaded = True
+            logger.info(f"Remote LLM connection established for '{self.model_name}'")
+            
+        except Exception as e:
+            raise InferenceError(
+                f"Failed to connect to remote LLM: {e}",
+                model_name=self.model_name,
+                details={"api_url": self._api_url, "error": str(e)},
+            )
+
+    def _load_local(self, model_path: str, **kwargs) -> None:
+        """Load local GGUF model."""
         try:
             from llama_cpp import Llama
 
-            logger.info(f"Loading model from {model_path}")
+            logger.info(f"Loading local model from {model_path}")
 
             self._model = Llama(
                 model_path=model_path,
@@ -112,7 +146,8 @@ class InferenceEngine:
             )
 
             self._is_loaded = True
-            logger.info(f"Model '{self.model_name}' loaded successfully")
+            self._is_remote = False
+            logger.info(f"Local model '{self.model_name}' loaded successfully")
 
         except ImportError as e:
             raise InferenceError(
@@ -123,7 +158,7 @@ class InferenceEngine:
 
         except Exception as e:
             raise InferenceError(
-                f"Failed to load model: {e}",
+                f"Failed to load local model: {e}",
                 model_name=self.model_name,
                 details={"model_path": model_path, "error": str(e)},
             )
@@ -132,9 +167,26 @@ class InferenceEngine:
         """Unload the current model and free resources."""
         if self._model is not None:
             logger.info(f"Unloading model '{self.model_name}'")
+            
+            # Explicitly delete the model object
             del self._model
             self._model = None
             self._is_loaded = False
+            
+            # Forced garbage collection to release VRAM
+            import gc
+            gc.collect()
+            
+            # Try to clear CUDA cache if torch is available
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    logger.debug("CUDA cache cleared")
+            except ImportError:
+                pass
+            except Exception as e:
+                logger.warning(f"Failed to clear CUDA cache: {e}")
 
     def is_loaded(self) -> bool:
         """
@@ -211,25 +263,34 @@ class InferenceEngine:
                 {"role": msg.role, "content": msg.content} for msg in messages
             ]
 
-            logger.debug(
-                f"Generating chat completion (temp={temp}, max_tokens={tokens})"
-            )
+            if self._is_remote:
+                response = self._model.chat_completion_sync(
+                    messages=formatted_messages,
+                    temperature=temp,
+                    max_tokens=tokens,
+                    stream=stream,
+                    **kwargs,
+                )
+                
+                # Extract response content (OpenAI format)
+                choice = response["choices"][0]
+                content = choice["message"]["content"]
+                finish_reason = choice.get("finish_reason", "stop")
+                usage = response.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
+            else:
+                response = self._model.create_chat_completion(
+                    messages=formatted_messages,
+                    temperature=temp,
+                    max_tokens=tokens,
+                    stream=stream,
+                    **kwargs,
+                )
 
-            response = self._model.create_chat_completion(
-                messages=formatted_messages,
-                temperature=temp,
-                max_tokens=tokens,
-                stream=stream,
-                **kwargs,
-            )
-
-            # Extract response content
-            choice = response["choices"][0]
-            content = choice["message"]["content"]
-            finish_reason = choice.get("finish_reason", "stop")
-
-            # Extract usage statistics
-            usage = response.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
+                # Extract response content (llama-cpp format)
+                choice = response["choices"][0]
+                content = choice["message"]["content"]
+                finish_reason = choice.get("finish_reason", "stop")
+                usage = response.get("usage", {"prompt_tokens": 0, "completion_tokens": 0})
 
             return ChatResponse(
                 content=content,
@@ -291,15 +352,22 @@ class InferenceEngine:
             )
 
         try:
-            logger.debug(f"Generating embeddings for {len(texts)} texts")
+            if self._is_remote:
+                response = self._model.embeddings_sync(
+                    input=texts,
+                    **kwargs,
+                )
+                
+                embeddings = [r["embedding"] for r in response["data"]]
+                total_tokens = response.get("usage", {}).get("total_tokens", 0)
+            else:
+                embeddings = []
+                total_tokens = 0
 
-            embeddings = []
-            total_tokens = 0
-
-            for text in texts:
-                embedding = self._model.embeddings.create([text])
-                embeddings.append(embedding[0])
-                total_tokens += len(text.split())  # Rough token estimate
+                for text in texts:
+                    embedding = self._model.embeddings.create([text])
+                    embeddings.append(embedding[0])
+                    total_tokens += len(text.split())  # Rough token estimate
 
             return EmbeddingResponse(
                 embeddings=embeddings,

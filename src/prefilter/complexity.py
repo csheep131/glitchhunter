@@ -466,21 +466,38 @@ class ComplexityAnalyzer:
             for cc_result in cc_results:
                 func = FunctionMetrics(
                     name=cc_result.name,
-                    line_start=cc_result.startline,
-                    line_end=cc_result.endline,
+                    line_start=getattr(cc_result, 'lineno', getattr(cc_result, 'startline', 0)),
+                    line_end=getattr(cc_result, 'endline', getattr(cc_result, 'lineno', 0) + 10),
                     cyclomatic_complexity=cc_result.complexity,
-                    lines=cc_result.endline - cc_result.startline + 1,
+                    lines=getattr(cc_result, 'endline', 0) - getattr(cc_result, 'lineno', getattr(cc_result, 'startline', 0)) + 1,
                 )
                 functions.append(func)
 
             # Halstead metrics
-            halstead = h_visit(source)
-            halstead_volume = halstead.functions[0].volume if halstead.functions else 0.0
-            halstead_difficulty = halstead.functions[0].difficulty if halstead.functions else 0.0
+            try:
+                halstead = h_visit(source)
+                if halstead and halstead.functions:
+                    first_func = halstead.functions[0]
+                    halstead_volume = getattr(first_func, 'volume', 0.0)
+                    halstead_difficulty = getattr(first_func, 'difficulty', 0.0)
+                else:
+                    halstead_volume = 0.0
+                    halstead_difficulty = 0.0
+            except Exception:
+                halstead_volume = 0.0
+                halstead_difficulty = 0.0
 
             # Maintainability index
-            mi = mi_visit(source, multi=True)
-            avg_mi = sum(mi.values()) / len(mi) if mi else 0.0
+            try:
+                mi = mi_visit(source, multi=True)
+                if isinstance(mi, dict):
+                    avg_mi = sum(mi.values()) / len(mi) if mi else 0.0
+                elif isinstance(mi, (int, float)):
+                    avg_mi = float(mi)
+                else:
+                    avg_mi = 0.0
+            except Exception:
+                avg_mi = 0.0
 
             # Raw metrics
             raw = analyze(source)

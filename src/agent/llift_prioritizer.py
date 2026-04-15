@@ -282,14 +282,14 @@ class LLiftPrioritizer:
     def _init_engine(self) -> None:
         """Initialisiert Inference-Engine."""
         try:
-            from ..inference.engine import InferenceEngine, InferenceConfig
+            # Absoluter Import statt relativer Import
+            from inference.engine import InferenceEngine
 
+            # InferenceEngine direkt mit temperature erstellen
             self._engine = InferenceEngine(
-                model_path=self.model_path,
-                config=InferenceConfig(
-                    temperature=0.1,  # Niedrig für deterministische Priorisierung
-                    max_tokens=512,
-                ),
+                model_name=self.model_path,
+                temperature=0.1,  # Niedrig für deterministische Priorisierung
+                max_tokens=512,
             )
             logger.info("Inference-Engine für LLift initialisiert")
         except Exception as e:

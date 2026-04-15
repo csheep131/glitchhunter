@@ -88,6 +88,22 @@ class LoggingConfig:
     stack_a: Dict[str, Any] = field(default_factory=dict)
     stack_b: Dict[str, Any] = field(default_factory=dict)
 
+    def get_level_for_stack(self, stack_name: str) -> str:
+        """
+        Get logging level for a specific stack.
+
+        Args:
+            stack_name: Name of the stack (stack_a or stack_b)
+
+        Returns:
+            Logging level (e.g., "DEBUG", "INFO")
+        """
+        if stack_name == "stack_a" and "level" in self.stack_a:
+            return self.stack_a["level"]
+        if stack_name == "stack_b" and "level" in self.stack_b:
+            return self.stack_b["level"]
+        return self.level
+
 
 @dataclass
 class FeaturesConfig:
@@ -112,6 +128,8 @@ class PathsConfig:
     cache: str
     temp: str
     security_rules: str
+    reports: str
+    llama_tools_path: str
 
 
 @dataclass
@@ -123,6 +141,16 @@ class ModelDownloadConfig:
     description: str
     size_gb: float
     stack: str
+
+
+@dataclass
+class MCPConfig:
+    """Configuration for MCP (SocratiCode) integration."""
+
+    enabled: bool
+    server: Dict[str, Any]
+    socraticode: Dict[str, Any]
+    auto_start: bool = True
 
 
 @dataclass
@@ -161,6 +189,7 @@ class Config:
     features: FeaturesConfig
     paths: PathsConfig
     model_downloads: ModelDownloadsConfig
+    mcp_integration: MCPConfig
 
     @classmethod
     def load(cls, config_path: Optional[Path] = None) -> "Config":
@@ -290,6 +319,8 @@ class Config:
                 cache=paths_data.get("cache", ".cache"),
                 temp=paths_data.get("temp", ".temp"),
                 security_rules=paths_data.get("security_rules", "src/security/rules"),
+                reports=paths_data.get("reports", "reports"),
+                llama_tools_path=paths_data.get("llama_tools_path", "/home/schaf/tools/llama-cpp-turboquant-cuda"),
             )
 
             # Parse model downloads config
@@ -299,6 +330,15 @@ class Config:
                 model_downloads[model_key] = ModelDownloadConfig(**model_data)
             
             model_downloads_config = ModelDownloadsConfig(models=model_downloads)
+
+            # Parse MCP config
+            mcp_data = data.get("mcp_integration", {})
+            mcp_integration = MCPConfig(
+                enabled=mcp_data.get("enabled", False),
+                server=mcp_data.get("server", {}),
+                socraticode=mcp_data.get("socraticode", {}),
+                auto_start=mcp_data.get("auto_start", True),
+            )
 
             return cls(
                 hardware=hardware,
@@ -310,6 +350,7 @@ class Config:
                 features=features,
                 paths=paths,
                 model_downloads=model_downloads_config,
+                mcp_integration=mcp_integration,
             )
 
         except TypeError as e:
@@ -456,6 +497,12 @@ class Config:
                     "stack": config.stack,
                 }
                 for key, config in self.model_downloads.models.items()
+            },
+            "mcp_integration": {
+                "enabled": self.mcp_integration.enabled,
+                "server": self.mcp_integration.server,
+                "socraticode": self.mcp_integration.socraticode,
+                "auto_start": self.mcp_integration.auto_start,
             },
         }
 

@@ -110,6 +110,19 @@ class PreFilterResult:
         return 0
 
     @property
+    def total_correctness_issues(self) -> int:
+        """Get total correctness findings."""
+        # Correctness findings sind auch in semgrep_result enthalten
+        # Hier zählen wir alle nicht-security Findings
+        if self.semgrep_result and hasattr(self.semgrep_result, 'findings'):
+            # Alle Findings die nicht als 'security' markiert sind
+            return sum(
+                1 for f in self.semgrep_result.findings
+                if f.get('metadata', {}).get('category', 'security') != 'security'
+            )
+        return 0
+
+    @property
     def has_critical_issues(self) -> bool:
         """Check if any critical issues exist."""
         return False
@@ -428,14 +441,18 @@ class PreFilterPipeline:
             reverse=True,
         )
 
-        prefilter_result.candidates = [
-            Candidate(
+        prefilter_result.candidates = []
+        for idx, f in enumerate(sorted_files):
+            # Filtere docs/, tests/, htmlcov/ und andere ausgeschlossene Verzeichnisse
+            if self._should_exclude_from_scan(f["file_path"]):
+                logger.debug(f"Excluding candidate from {f['file_path']}")
+                continue
+                
+            prefilter_result.candidates.append(Candidate(
                 file_path=f["file_path"],
                 total_score=f["total_score"],
                 factors=f["factors"],
-            )
-            for f in sorted_files
-        ]
+            ))
 
         return prefilter_result
 
@@ -461,6 +478,42 @@ class PreFilterPipeline:
             "/.venv/", "/venv/", "/dist/", "/build/",
         ]
         return any(p in path_str for p in ignore_patterns)
+    
+    def _should_exclude_from_scan(self, file_path: str) -> bool:
+        """
+        Prüft ob eine Datei vom Scan ausgeschlossen werden soll.
+        
+        Args:
+            file_path: Zu prüfender Dateipfad (relativ zum Repo oder absolut)
+            
+        Returns:
+            True wenn Datei ausgeschlossen werden soll
+        """
+        p = Path(file_path)
+        
+        # Bei absoluten Pfaden innerhalb des Repos: relativen Pfad extrahieren
+        if p.is_absolute() and self.repo_path.is_absolute():
+            try:
+                p = p.relative_to(self.repo_path)
+            except ValueError:
+                # Pfad ist nicht innerhalb des Repos
+                pass
+        
+        # Verzeichnisse ausschließen
+        excluded_dirs = {
+            'docs', 'tests', 'sandbox', 'examples', 'demos', 'htmlcov', 'test',
+            'venv', '.venv', 'env', '.env', 'node_modules', 'dist', 'build',
+            '__pycache__', '.git', '.tox', '.eggs', '*.egg-info'
+        }
+        for part in p.parts:
+            if part in excluded_dirs:
+                return True
+        
+        # Dateitypen ausschließen
+        if p.suffix.lower() in {'.md', '.rst', '.txt', '.html', '.js', '.css'}:
+            return True
+            
+        return False
 
     def _calculate_filtered_percentage(self, result: PreFilterResult) -> float:
         """Calculate percentage of code filtered out."""

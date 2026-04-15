@@ -11,46 +11,42 @@ GlitchHunter is an intelligent code analysis tool that uses **local open-source 
 ## Core Features
 
 - **100% Local LLMs**: No cloud APIs, no data leaks - all models run locally on your hardware
-- **Automatic Bug Fixes**: Finds bugs AND fixes them safely with 4-fold safety checks
-- **Adaptive Hardware Support**: Automatic selection between Stack A (8GB VRAM) and Stack B (24GB VRAM)
-- **OWASP Top 10 2025**: Complete security coverage including API Security
-- **Regression-Proof**: Every fix is validated with 4 Safety Gates - no new bugs guaranteed
-- **Multi-Model Inference**: Support for Qwen3.5, Phi-4-mini, DeepSeek-V3.2
+- **AI-Augmented Scanning**: Uses semantic LLM reasoning to verify findings where static analysis fallback (Semantic Logic Analysis).
+- **Full Automation**: One command handles building, starting the LLM server, scanning, and fixing.
+- **TurboQuant Acceleration**: Optimized KV-Cache and Flash-Attention for 128k+ context on consumer GPUs.
+- **OWASP Top 10 2025**: Complete security coverage including API Security and JWT rules.
+- **Automated Reporting**: Generates detailed Markdown and JSON reports for every run.
+- **Smart Ignore Service**: Filter out dependency noise using the `.glitchignore` system.
 
 ## How It Works
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    GLITCHHUNTER PIPELINE                         │
+│             (Fully Automated Single-Terminal Workflow)             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  1. INGESTION: Repository scanning & understanding              │
 │     • Tree-sitter AST analysis                                  │
-│     • Git History & Hotspots                                    │
+│     • Smart Ignore system (.glitchignore)                       │
 │     • Symbol graph creation                                     │
 │                                                                  │
 │  2. SHIELD: Bugs & Security vulnerabilities finding             │
 │     • Semgrep Security Scan (OWASP Top 10)                      │
+│     • AI Hypothesis Generation (LLM-driven for unknown types)   │
 │     • Data-Flow Graph analysis                                  │
-│     • 3-5 hypotheses per bug                                    │
 │                                                                  │
-│  3. PATCH LOOP: Secure fixes generation                        │
+│  3. ANALYZER: Semantic AI Verification                         │
+│     • LLM Verifier confirms weak graph findings                 │
+│     • Logical reasoning boost (85%+ Confidence)                 │
+│                                                                  │
+│  4. PATCH LOOP: Secure fixes generation                        │
 │     • LLM generates minimal patch                               │
-│     • Gate 1: Pre-Apply Validation (Syntax, Linting)            │
-│     • Gate 2: Sandbox Test (Docker-isolated)                    │
-│     • Gate 3: Post-Apply Verifier (95% Confidence)              │
-│     • Gate 4: Coverage Check (no regression)                    │
+│     • 4 Safety Gates: Syntax, Sandbox, Verifier, Coverage       │
 │                                                                  │
-│  4. FINALIZER: Merge fixes & learn                              │
+│  5. FINALIZER: Merge fixes & reporting                          │
 │     • Git-Worktree merge with commit                            │
-│     • Learn new Semgrep rules                                   │
-│     • JSON/Markdown Reports                                     │
-│                                                                  │
-│  ESCALATION: For complex bugs (4 Levels)                        │
-│     • Level 1: Context Explosion (160k Tokens)                  │
-│     • Level 2: Bug Decomposition (Sub-Bugs)                     │
-│     • Level 3: Multi-Model Ensemble (Voting)                    │
-│     • Level 4: Human-in-the-Loop (Draft-PR)                     │
+│     • Automatic Markdown/JSON Report generation                 │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -60,21 +56,12 @@ GlitchHunter is an intelligent code analysis tool that uses **local open-source 
 | Feature | Stack A (GTX 3060) | Stack B (RTX 3090) |
 |---------|-------------------|-------------------|
 | VRAM | 8GB | 24GB |
-| Mode | Sequential | Parallel |
-| Models | Qwen3.5-9B + Phi-4-mini | Qwen3.5-27B/35B + DeepSeek-V3.2-Small |
-| Context | 64k-128k (TurboQuant) | 100k-200k |
+| Acceleration | TurboQuant + Flash-Attention | Native 16-bit / FP8 |
+| Context | 64k-128k (Layer-Adaptive) | 100k-200k |
+| Build | Automated (CMake/CUDA) | Automated (CMake/CUDA) |
 | Security | Security-Lite | Full Security Shield |
-| Throughput | ~50 LOC/min | ~200 LOC/min |
-| 10k lines | 10-18 min | 4-8 min |
 
 ## Quickstart
-
-### Prerequisites
-
-- Python 3.10+
-- NVIDIA GPU with CUDA 12.x
-- Docker (for sandbox execution)
-- cmake, build-essential
 
 ### Installation
 
@@ -85,24 +72,57 @@ cd glitchhunter
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Build llama-cpp-python for GPU (with TurboQuant)
-./scripts/build_llama_cpp.sh
-
-# Download models (GGUF format, local)
-python scripts/download_models.py
 ```
 
-### Start Stack A (GTX 3060)
+### Automatic Workflow (Recommended)
 
+GlitchHunter now features a **fully automated lifecycle**. The scripts handle building the optimized inference engine, starting the background LLM server, performing analysis, and cleaning up processes automatically.
+
+**Scan Only (Safety Audit)**
+Find vulnerabilities without modifying code.
 ```bash
-./scripts/run_stack_a.sh
+./scripts/run_stack_a.sh scan /path/to/repo
 ```
 
-### Start Stack B (RTX 3090)
+**Fix (Full Repair)**
+Find and automatically repair vulnerabilities with 4-layer validation.
+```bash
+./scripts/run_stack_a.sh fix /path/to/repo
+```
+
+## Advanced Features
+
+### Automated Reports
+Every run generates two types of reports in the `reports/` directory (configurable in `config.yaml`):
+- **Markdown (`*_report.md`)**: Human-readable summary with severity icons and findings.
+- **JSON (`*_report.json`)**: Machine-readable data for CI/CD integration.
+
+### Smart Ignores (.glitchignore)
+To prevent GlitchHunter from wasting VRAM on dependencies or build artifacts, use a `.glitchignore` file in your repository root.
+It supports standard glob patterns (similar to `.gitignore`):
+```text
+# .glitchignore example
+venv/
+node_modules/
+target/
+dist/
+tests/data/
+```
+
+### System Configuration
+The `config.yaml` controls hardware profiles, paths, and feature toggles:
+- `llama_tools_path`: Path to the TurboQuant build directory.
+- `paths.reports`: Directory for analysis reports.
+- `features`: Toggle specific analysis levels (AST, Complexity, etc.).
+
+### Usage (Stack B - RTX 3090)
 
 ```bash
-./scripts/run_stack_b.sh
+# Option 1: Scan only
+./scripts/run_stack_b.sh scan /path/to/repo
+
+# Option 2: Fix
+./scripts/run_stack_b.sh fix /path/to/repo
 ```
 
 ### Use API
@@ -131,14 +151,14 @@ glitchhunter/
 │   ├── inference/     # Local model inference with llama-cpp
 │   ├── prefilter/     # AST analysis and complexity checks
 │   ├── security/      # OWASP Scanner and Security Shield
-│   ├── agent/         # LangGraph State Machine (5 States)
+│   ├── agent/         # LangGraph State Machine (8 States) - Status: docs/STATE_MACHINE_STATUS.md
 │   ├── mapper/        # Repository mapping and symbol graph
-│   ├── fixing/        # Patch generation and Safety Gates
+│   ├── fixing/        # Patch generation and Safety Gates (4 Gates + EvidenceGate)
 │   ├── escalation/    # 4-Level escalation hierarchy
 │   ├── api/           # FastAPI Server and routes
 │   └── core/          # Configuration, logging, exceptions
 ├── scripts/           # Build and run scripts
-├── tests/             # Unit Tests (111 Tests)
+├── tests/             # Unit Tests (150 Tests) - Coverage: ~80%
 └── docs/              # Documentation
 ```
 

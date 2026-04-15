@@ -242,7 +242,7 @@ class SemgrepRunner:
             self.semgrep_path,
             "--json",
             "--quiet",
-            "--no-redirect",
+            
         ]
 
         # Add OWASP Top 10 rules
@@ -345,7 +345,7 @@ class SemgrepRunner:
             self.semgrep_path,
             "--json",
             "--quiet",
-            "--no-redirect",
+            
             "--config",
             "p/correctness",
         ]
@@ -413,7 +413,7 @@ class SemgrepRunner:
             self.semgrep_path,
             "--json",
             "--quiet",
-            "--no-redirect",
+            
             "--config",
             "p/owasp-top-ten",
         ]
@@ -475,7 +475,7 @@ class SemgrepRunner:
             self.semgrep_path,
             "--json",
             "--quiet",
-            "--no-redirect",
+            
             "--config",
             "p/api-security",
         ]
@@ -537,7 +537,7 @@ class SemgrepRunner:
             self.semgrep_path,
             "--json",
             "--quiet",
-            "--no-redirect",
+            
         ]
 
         for rule_file in rule_files:

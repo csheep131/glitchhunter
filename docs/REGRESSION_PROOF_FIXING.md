@@ -1,8 +1,9 @@
 # Regression-Proof Patch Loop
 
-**Version:** 2.0
-**Date:** April 13, 2026
-**Status:** Architecture Specification
+**Version:** 2.0  
+**Date:** April 13, 2026  
+**Status:** Architecture Specification  
+**Single Source of Truth:** [STATE_MACHINE_STATUS.md](STATE_MACHINE_STATUS.md) für Implementierungs-Status
 
 ---
 

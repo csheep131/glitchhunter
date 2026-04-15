@@ -20,6 +20,7 @@ from analysis.dfg_builder import (
 from core.logging_config import get_logger
 
 from agent.hypothesis_agent import Hypothesis
+from inference.engine import InferenceEngine, ChatMessage
 
 logger = get_logger(__name__)
 
@@ -298,10 +299,32 @@ class AnalyzerAgent:
                 )
                 result.evidence_collection.add_positive(evidence)
 
-        # Compute confidence
+        # Compute confidence from graph evidence
         result.confidence = self.compute_confidence(
             result.evidence_collection
         )
+
+        # Semantic Verification boost
+        # We perform this if graph evidence is weak, even if no paths were found,
+        # to ensure semantic intelligence can catch issues graph analysis misses.
+        if result.confidence < 0.7:
+            logger.info(f"Performing semantic verification for {hypothesis.id} (Graph confidence: {result.confidence:.2f})")
+            semantic_confidence, reasoning = self._semantic_verification(hypothesis)
+            
+            if semantic_confidence > 0:
+                logger.info(f"Semantic verification result for {hypothesis.id}: {semantic_confidence:.2f}")
+                # Boost confidence
+                result.confidence = max(result.confidence, semantic_confidence)
+                
+                evidence = Evidence(
+                    evidence_type=EvidenceType.SEMANTIC_SIMILARITY,
+                    description=f"AI Reasoning: {reasoning}",
+                    weight=0.9, # High weight for AI reasoning
+                    quality=semantic_confidence,
+                )
+                result.evidence_collection.add_positive(evidence)
+            else:
+                logger.debug(f"Semantic verification provided no boost for {hypothesis.id}")
 
         # Determine if hypothesis is confirmed
         result.is_confirmed = result.confidence >= 0.7
@@ -686,6 +709,154 @@ class AnalyzerAgent:
         """Clear all test results."""
         self._test_results = []
         logger.debug("Test results cleared")
+
+    def _semantic_verification(
+        self,
+        hypothesis: Hypothesis,
+    ) -> Tuple[float, str]:
+        """
+        Perform semantic verification using LLM.
+        
+        Args:
+            hypothesis: Hypothesis to verify
+            
+        Returns:
+            Tuple of (confidence_score, reasoning)
+        """
+        if not self._llm_client:
+            return 0.0, "No LLM client available"
+            
+        # Try to find file_path and line from hypothesis or candidate
+        candidate_id = hypothesis.candidate_id
+        # This is a bit of a shim since we don't have the full candidate object here
+        # but hypothesis usually contains the symbol/path in description or affected_symbols
+        
+        # In a real implementation we'd fetch the candidate, but for now we extract from hypothesis
+        file_path = "unknown"
+        line = 0
+        
+        # Try to extract path:line from description if present
+        import re
+        match = re.search(r"Location: (.*?):(\d+)", hypothesis.description)
+        if match:
+            file_path = match.group(1)
+            line = int(match.group(2))
+        
+        if file_path == "unknown":
+            return 0.0, "Could not determine file path for semantic verification"
+            
+        code_context = self._get_code_snippet(file_path, line)
+        if not code_context:
+            return 0.0, f"Could not read code context for {file_path}"
+            
+        prompt = f"""Du bist ein Security-Auditor. Analysiere den folgenden Code auf das beschriebene Issue.
+        
+CODE ({file_path}):
+```python
+{code_context}
+```
+
+VERDACHT (Hypothese):
+Typ: {hypothesis.hypothesis_type}
+Beschreibung: {hypothesis.description}
+Betroffene Symbole: {hypothesis.affected_symbols}
+
+DEINE AUFGABE:
+1. Prüfe ob der Verdacht begründet ist.
+2. Bewerte die Wahrscheinlichkeit (Confidence) von 0.0 bis 1.0.
+3. Gib eine kurze Begründung an.
+
+ANTWORT (JSON Format):
+{{
+    "confirmed": true/false,
+    "confidence": 0.0-1.0,
+    "reasoning": "..."
+}}
+"""
+        try:
+            # Use InferenceEngine if that's what we have
+            if isinstance(self._llm_client, InferenceEngine):
+                response_text = self._llm_client.chat_simple(
+                    system_prompt="Du bist ein präziser Security-Analyst.",
+                    user_message=prompt,
+                    temperature=0.1
+                )
+            else:
+                # Fallback for generic client
+                response_text = self._llm_client.generate(prompt)
+                
+            # Parse JSON mit robusterem Parsing
+            import json
+            import re
+            
+            # Extract JSON from potential markdown fluff
+            clean_json = response_text.strip()
+            
+            # Versuch 1: Extract from markdown code block
+            if "```json" in response_text:
+                match = re.search(r'```json\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+                if match:
+                    clean_json = match.group(1)
+            
+            # Versuch 2: Extract first JSON object
+            elif "{" in response_text:
+                start = response_text.find("{")
+                end = response_text.rfind("}") + 1
+                if start >= 0 and end > start:
+                    clean_json = response_text[start:end]
+            
+            # Versuch 3: Parse mit Fehlerbehandlung für Delimiter-Fehler
+            try:
+                data = json.loads(clean_json)
+            except json.JSONDecodeError as e:
+                # Bei "Extra data" oder Delimiter-Fehler: versuche nur ersten Teil
+                if "Extra data" in str(e) or "delimiter" in str(e):
+                    # Versuche Zeile für Zeile zu parsen bis zum Fehler
+                    lines = clean_json.split('\n')
+                    for i in range(len(lines), 0, -1):
+                        try:
+                            data = json.loads('\n'.join(lines[:i]))
+                            break
+                        except json.JSONDecodeError:
+                            continue
+                    else:
+                        logger.warning(f"JSON parsing failed completely: {e}")
+                        return 0.0, f"JSON parsing failed: {e}"
+                else:
+                    logger.warning(f"JSON parsing error: {e}")
+                    return 0.0, f"JSON parsing error: {e}"
+            
+            conf = float(data.get("confidence", 0.0))
+            reason = data.get("reasoning", "Keine Begründung angegeben.")
+
+            return conf, reason
+
+        except Exception as e:
+            logger.error(f"Error in semantic verification: {e}")
+            return 0.0, f"Error: {str(e)}"
+
+    def _get_code_snippet(self, file_path: str, line: int, window: int = 50) -> Optional[str]:
+        """Read a code snippet around a line."""
+        import os
+        if not os.path.exists(file_path):
+            return None
+            
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                
+            start = max(0, line - window)
+            end = min(len(lines), line + window)
+            
+            snippet_lines = []
+            for i in range(start, end):
+                prefix = "> " if i + 1 == line else "  "
+                snippet_lines.append(f"{i+1:4d}{prefix} {lines[i].rstrip()}")
+                
+            return "\n".join(snippet_lines)
+        except Exception as e:
+            logger.error(f"Error reading code snippet: {e}")
+            return None
 
     def set_symbol_graph(self, symbol_graph: nx.DiGraph) -> None:
         """

@@ -1,0 +1,90 @@
+# GlitchHunter Ignore File
+# Patterns to exclude from security analysis and repository mapping
+
+# Version Control
+.git/
+.svn/
+.hg/
+.bzr/
+_darcs/
+
+# Python
+venv/
+.venv/
+env/
+.env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+htmlcov/
+nosetests.xml
+coverage.xml
+*.swp
+*.bak
+
+# Node.js / JavaScript
+node_modules/
+bower_components/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.yarn/
+dist/
+build/
+.next/
+.nuxt/
+out/
+.cache/
+
+# Rust
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Go
+vendor/
+pkg/
+bin/
+
+# Java / JVM
+.gradle/
+build/
+target/
+out/
+.settings/
+.classpath/
+.project/
+*.class
+*.jar
+*.war
+*.ear
+
+# C / C++
+build/
+bin/
+obj/
+*.o
+*.a
+*.so
+*.out
+*.exe
+*.dll
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# GlitchHunter specific
+logs/
+reports/
+.temp/
+.cache/

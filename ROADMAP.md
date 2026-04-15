@@ -1,7 +1,8 @@
 # GlitchHunter Roadmap and Implementation Status
 
-**Status:** April 14, 2026
-**Reference:** IMPLEMENTIERUNGSPLAN.md v2.0
+**Status:** April 14, 2026  
+**Reference:** IMPLEMENTIERUNGSPLAN.md v2.0  
+**Single Source of Truth:** [STATE_MACHINE_STATUS.md](docs/STATE_MACHINE_STATUS.md) für detaillierte Status mit DoD, Tests und Blocking Issues.
 
 ## Overview
 
@@ -9,13 +10,40 @@ This document describes the current implementation status of GlitchHunter and th
 
 ## Overall Progress
 
-| Phase | Status | Completion Level |
-|-------|--------|------------------|
-| **Phase 1: Ingestion & Mapping** | **✅ Complete** | **100%** |
-| **Phase 2: The Shield** | **✅ Complete** | **100%** |
-| **Phase 3: Patch Loop** | **✅ Complete** | **100%** |
-| **Phase 4: Finalizer** | **✅ Complete** | **100%** |
-| **Infrastructure & MCP** | **Partially implemented** | ~60% |
+| Phase | Status | Completion Level | Tests | Coverage | Production Ready |
+|-------|--------|------------------|-------|----------|------------------|
+| **Phase 1: Ingestion & Mapping** | **✅ Complete** | **100%** | 45 | 85% | ✅ **YES** |
+| **Phase 2: The Shield** | **🟡 Complete (No Tests)** | **100%** | **0** ❌ | N/A | ❌ **NO** |
+| **Phase 3: Patch Loop** | **✅ Complete** | **100%** | 20 | 75% | ✅ **YES** |
+| **Phase 4: Finalizer** | **✅ Complete** | **100%** | 26 | 80% | ✅ **YES** |
+| **Evidence-Contract** | **✅ Complete** | **100%** | 59 | 94% | ✅ **YES** |
+| **Infrastructure & MCP** | **Partially implemented** | ~60% | - | - | 🟡 **PARTIAL** |
+| **GESAMT** | **80% Complete** | | **150** | **~80%** | **🟡 BLOCKED** |
+
+> ⚠️ **Blocker:** Phase 2 (Shield) hat **0 Tests**. Production-Readiness erst nach Implementierung der Shield-Tests.
+
+---
+
+## Implementation Status Details
+
+### Quick Summary
+
+For detailed status with Definition of Done, test counts, and blocking issues, see **[STATE_MACHINE_STATUS.md](docs/STATE_MACHINE_STATUS.md)**.
+
+| Phase | DoD Defined | Implementation | Tests | Coverage | Ready |
+|-------|-------------|----------------|-------|----------|---------|
+| Phase 1 | ✅ | 100% | 45 | 85% | ✅ Yes |
+| Phase 2 | ✅ | 100% | 0 ❌ | N/A | ❌ No (missing tests) |
+| Phase 3 | ✅ | 100% | 20 | 75% | ✅ Yes |
+| Phase 4 | ✅ | 100% | 26 | 80% | ✅ Yes |
+
+### Blocking Issues
+
+| Issue | Phase | Priority | Status | Description |
+|-------|-------|----------|--------|-------------|
+| **#101** | Phase 2 | **HIGH** | 🔴 Open | Shield-Tests fehlen komplett |
+| **#102** | Global | MEDIUM | 🔴 Open | State-Machine Integrationstests fehlen |
+| **#103** | Phase 3 | LOW | 🟡 Open | EvidenceGate E2E-Tests unvollständig |
 
 ---
 

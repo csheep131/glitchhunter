@@ -1,7 +1,9 @@
 """
 Logging configuration for GlitchHunter.
 
-Sets up structured JSON logging with timestamps, levels, and module information.
+Sets up structured logging with:
+- Colorful, human-readable console output
+- JSON file logging for machine processing
 """
 
 import logging
@@ -17,6 +19,87 @@ from core.config import LoggingConfig as LoggingConfigData
 
 # Module logger
 logger = logging.getLogger(__name__)
+
+# ANSI color codes for console output
+COLORS = {
+    'DEBUG': '\033[36m',     # Cyan
+    'INFO': '\033[32m',      # Green
+    'WARNING': '\033[33m',   # Yellow
+    'ERROR': '\033[31m',     # Red
+    'CRITICAL': '\033[35m',  # Magenta
+    'RESET': '\033[0m',      # Reset
+}
+
+
+class ColorConsoleFormatter(logging.Formatter):
+    """
+    Human-readable console formatter with colors.
+    
+    Format: [LEVEL] Module: Message (file:line)
+    """
+    
+    # Short module name mapping for cleaner output
+    SHORT_NAMES = {
+        'agent.state_machine': 'StateMachine',
+        'agent.hypothesis_agent': 'HypothesisAgent',
+        'agent.analyzer_agent': 'Analyzer',
+        'agent.observer_agent': 'Observer',
+        'agent.patch_generator': 'PatchGen',
+        'agent.evidence_gate': 'EvidenceGate',
+        'prefilter.pipeline': 'Prefilter',
+        'prefilter.semgrep_runner': 'Semgrep',
+        'prefilter.complexity': 'Complexity',
+        'prefilter.git_churn': 'GitChurn',
+        'security.shield': 'Shield',
+        'security.owasp_scanner': 'OWASP',
+        'mapper.repo_mapper': 'Mapper',
+        'core.reporting': 'Reporter',
+        'inference.engine': 'LLM',
+        'hardware.detector': 'Hardware',
+        'mcp_gw.socratiCode_client': 'MCP',
+    }
+    
+    def format(self, record: logging.LogRecord) -> str:
+        """
+        Format log record for console output.
+        
+        Args:
+            record: Log record to format
+            
+        Returns:
+            Formatted log string
+        """
+        # Get short module name
+        module_name = record.name
+        if module_name.startswith('glitchhunter.'):
+            module_name = module_name[len('glitchhunter.'):]
+        
+        short_name = self.SHORT_NAMES.get(module_name, module_name.split('.')[-1])
+        
+        # Color level
+        level = record.levelname
+        color = COLORS.get(level, COLORS['RESET'])
+        
+        # Format message
+        message = record.getMessage()
+        
+        # Truncate long messages for console
+        if len(message) > 200:
+            message = message[:197] + '...'
+        
+        # Build output
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        output = (
+            f"{color}[{level:8}]{COLORS['RESET']} "
+            f"{short_name}: "
+            f"{message}"
+        )
+        
+        # Add file:line for DEBUG and ERROR
+        if record.levelno in (logging.DEBUG, logging.ERROR):
+            output += f" ({record.filename}:{record.lineno})"
+        
+        return output
 
 
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
@@ -66,6 +149,9 @@ def setup_logging(
 ) -> None:
     """
     Set up logging configuration for the application.
+    
+    Console output is human-readable with colors.
+    File output is JSON for machine processing.
 
     Args:
         config: Logging configuration from config.yaml
@@ -96,19 +182,14 @@ def setup_logging(
     # Clear existing handlers
     root_logger.handlers.clear()
 
-    # Create formatter
-    formatter = CustomJsonFormatter(
-        fmt="%(timestamp)s %(level)s %(module)s %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S",
-    )
-
-    # Console handler
+    # Console handler with colorful human-readable formatter
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(log_level_int)
-    console_handler.setFormatter(formatter)
+    console_formatter = ColorConsoleFormatter()
+    console_handler.setFormatter(console_formatter)
     root_logger.addHandler(console_handler)
 
-    # File handler (if log file specified)
+    # File handler with JSON formatter (if log file specified)
     if log_file_path:
         # Ensure log directory exists
         log_dir = Path(log_file_path).parent
@@ -117,7 +198,7 @@ def setup_logging(
         except OSError as e:
             logger.warning(f"Failed to create log directory {log_dir}: {e}")
 
-        # Rotating file handler
+        # Rotating file handler with JSON format
         try:
             file_handler = RotatingFileHandler(
                 log_file_path,
@@ -125,7 +206,11 @@ def setup_logging(
                 backupCount=config.backup_count,
             )
             file_handler.setLevel(log_level_int)
-            file_handler.setFormatter(formatter)
+            file_formatter = CustomJsonFormatter(
+                fmt="%(timestamp)s %(level)s %(module)s %(message)s",
+                datefmt="%Y-%m-%dT%H:%M:%S",
+            )
+            file_handler.setFormatter(file_formatter)
             root_logger.addHandler(file_handler)
             logger.info(f"Logging to file: {log_file_path}")
         except OSError as e:
@@ -148,6 +233,48 @@ def setup_logging(
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("semgrep").setLevel(logging.WARNING)
     logging.getLogger("tree_sitter").setLevel(logging.WARNING)
+    logging.getLogger("networkx").setLevel(logging.WARNING)
+
+
+class ProgressFormatter(logging.Formatter):
+    """
+    Special formatter for progress messages.
+    
+    Shows progress in a single line with percentage.
+    """
+    
+    def format(self, record: logging.LogRecord) -> str:
+        """
+        Format progress message.
+        
+        Args:
+            record: Log record to format
+            
+        Returns:
+            Formatted progress string
+        """
+        message = record.getMessage()
+        
+        # Extract percentage if present
+        percentage = None
+        if '%' in message:
+            try:
+                parts = message.split('%')
+                for part in parts:
+                    if part.strip().isdigit():
+                        percentage = int(part.strip())
+                        break
+            except (ValueError, IndexError):
+                pass
+        
+        # Build progress bar
+        if percentage is not None:
+            bar_width = 30
+            filled = int(bar_width * percentage / 100)
+            bar = '█' * filled + '░' * (bar_width - filled)
+            return f"\r[{bar}] {percentage:3d}%"
+        
+        return message
 
 
 def get_logger(name: str) -> logging.Logger:

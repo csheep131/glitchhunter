@@ -35,6 +35,8 @@ hardware:
       max_batch_size: 1
       parallel_requests: false
       turbo_quant: true
+      server_port: 8080
+      chat_template: "src/inference/templates/qwen_de.jinja"
     
   # Stack B: Parallel, Full Security
   stack_b:
@@ -93,9 +95,9 @@ prefilter:
   
   complexity:
     enabled: true
-    max_cyclomatic: 15
-    max_cognitive: 25
-    max_nesting: 5
+    max_cyclomatic: 10  # Von 15 auf 10 gesenkt für mehr Hotspots
+    max_cognitive: 20   # Von 25 auf 20 gesenkt
+    max_nesting: 4      # Von 5 auf 4 gesenkt
     tool: "radon"  # oder "lizard"
 
 # Agent Konfiguration
@@ -143,6 +145,17 @@ api:
     enabled: false
     api_key_header: "X-API-Key"
 
+# MCP Integration (SocratiCode)
+mcp_integration:
+  enabled: true
+  server:
+    host: "localhost"
+    port: 8934
+    timeout_seconds: 60
+  socratiCode:
+    auto_index: true
+    index_on_start: true
+
 # Logging Konfiguration
 logging:
   level: "INFO"
@@ -153,7 +166,7 @@ logging:
   
   # Stack-spezifisches Logging
   stack_a:
-    level: "INFO"
+    level: "DEBUG"
   
   stack_b:
     level: "DEBUG"
@@ -181,32 +194,34 @@ features:
 # Evidence Gate Konfiguration (NEW)
 evidence_gate:
   # Minimum evidence score thresholds by risk class
-  min_score_weak: 0.4      # Minimum for LOW risk
-  min_score_medium: 0.5    # Minimum for MEDIUM risk
-  min_score_high: 0.6      # Minimum for HIGH/CRITICAL risk
-  
+  min_score_weak: 0.3      # Von 0.4 auf 0.3 gesenkt für mehr Kandidaten
+  min_score_medium: 0.4    # Von 0.5 auf 0.4 gesenkt
+  min_score_high: 0.5      # Von 0.6 auf 0.5 gesenkt
+
   # Maximum retries before escalation
   max_retries: 3
-  
+
   # Require specific evidence components
-  require_reproduction: true
-  require_affected_symbols: true
+  require_reproduction: false  # Von true auf false für initiale Scans
+  require_affected_symbols: false  # Locker für erste Analyse
   require_violated_invariant: true
   require_scope_classification: true
   require_risk_assessment: true
-  
+
   # Hypothesis requirements
-  min_hypotheses: 3
+  min_hypotheses: 2      # Von 3 auf 2 gesenkt
   max_hypotheses: 5
-  min_avg_hypothesis_confidence: 0.3
+  min_avg_hypothesis_confidence: 0.25  # Von 0.3 auf 0.25 gesenkt
 
 # Pfade
 paths:
   models: "models"
   logs: "logs"
+  reports: "reports"
   cache: ".cache"
   temp: ".temp"
   security_rules: "src/security/rules"
+  llama_tools_path: "/home/schaf/tools/llama-cpp-turboquant-cuda"
 
 # Model Download Configuration
 model_downloads:
