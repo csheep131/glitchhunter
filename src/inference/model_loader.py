@@ -52,13 +52,15 @@ class ModelLoader:
         self,
         model_config: ModelConfig,
         model_alias: Optional[str] = None,
+        use_smart_fallback: bool = True,
     ) -> Any:
         """
-        Load a model from file.
+        Load a model from file with smart GPU/CPU fallback.
 
         Args:
             model_config: Model configuration with path and parameters
             model_alias: Optional alias for the loaded model
+            use_smart_fallback: Enable intelligent fallback based on VRAM
 
         Returns:
             Loaded model instance (llama-cpp-python Llama object)
@@ -84,52 +86,88 @@ class ModelLoader:
                 },
             )
 
+        # Use smart fallback to determine optimal settings
+        if use_smart_fallback:
+            from hardware.smart_fallback import get_inference_config
+            
+            # Detect if CPU-only is needed
+            cpu_only = model_config.n_gpu_layers == 0
+            inference_config = get_inference_config(cpu_only=cpu_only)
+            
+            # Update model config with smart settings
+            effective_config = ModelConfig(
+                name=model_config.name,
+                path=model_config.path,
+                context_length=min(model_config.context_length, inference_config.n_ctx),
+                n_gpu_layers=inference_config.n_gpu_layers,
+                n_threads=inference_config.n_threads,
+            )
+            
+            logger.info(f"Smart fallback: {inference_config.mode.value}, "
+                       f"n_gpu_layers={inference_config.n_gpu_layers}")
+        else:
+            effective_config = model_config
+
         # Estimate VRAM requirement
-        estimated_vram = self._estimate_vram_requirement(model_config)
+        estimated_vram = self._estimate_vram_requirement(effective_config)
 
         # Allocate VRAM
         allocated = self._vram_manager.allocate_for_model(
             model_name=alias,
             required_vram_gb=estimated_vram,
-            context_length=model_config.context_length,
+            context_length=effective_config.context_length,
             batch_size=1,
         )
 
         if not allocated:
             available = self._vram_manager.available_vram_gb
-            raise ModelLoadError(
-                f"Insufficient VRAM for model '{alias}'",
-                details={
-                    "model_name": alias,
-                    "required_vram_gb": estimated_vram,
-                    "available_vram_gb": available,
-                },
+            logger.warning(
+                f"Insufficient VRAM for model '{alias}' ({estimated_vram:.2f}GB needed, "
+                f"{available:.2f}GB available). Attempting CPU fallback..."
             )
+            
+            # Force CPU mode and retry
+            effective_config.n_gpu_layers = 0
+            effective_config.n_threads = multiprocessing.cpu_count()
+            logger.info(f"Falling back to CPU mode (threads={effective_config.n_threads})")
 
         # Load model
         try:
             logger.info(f"Loading model '{alias}' from {model_path}")
 
             from llama_cpp import Llama
+            from hardware.smart_fallback import InferenceMode
 
-            model = Llama(
-                model_path=str(model_path),
-                n_ctx=model_config.context_length,
-                n_gpu_layers=model_config.n_gpu_layers,
-                n_threads=model_config.n_threads,
-                verbose=False,
-            )
+            # Build kwargs with TurboQuant optimizations
+            load_kwargs = {
+                "model_path": str(model_path),
+                "n_ctx": effective_config.context_length,
+                "n_gpu_layers": effective_config.n_gpu_layers,
+                "n_threads": effective_config.n_threads,
+                "verbose": False,
+            }
+            
+            # Add TurboQuant optimizations if available
+            if use_smart_fallback:
+                inference_config = get_inference_config(
+                    cpu_only=(effective_config.n_gpu_layers == 0)
+                )
+                turbo_kwargs = inference_config.to_llama_kwargs()
+                load_kwargs.update(turbo_kwargs)
+
+            model = Llama(**load_kwargs)
 
             # Track loaded model
             self._loaded_models[alias] = {
                 "model": model,
-                "config": model_config,
-                "vram_allocated": estimated_vram,
+                "config": effective_config,
+                "vram_allocated": estimated_vram if effective_config.n_gpu_layers > 0 else 0,
             }
 
+            mode_str = "GPU" if effective_config.n_gpu_layers != 0 else "CPU"
             logger.info(
-                f"Model '{alias}' loaded successfully "
-                f"({estimated_vram:.2f}GB VRAM allocated)"
+                f"Model '{alias}' loaded successfully ({mode_str} mode, "
+                f"layers={effective_config.n_gpu_layers}, ctx={effective_config.context_length})"
             )
 
             return model

@@ -131,23 +131,58 @@ class InferenceEngine:
             )
 
     def _load_local(self, model_path: str, **kwargs) -> None:
-        """Load local GGUF model."""
+        """Load local GGUF model with smart fallback."""
         try:
             from llama_cpp import Llama
+            from hardware.smart_fallback import get_inference_config, InferenceMode
 
             logger.info(f"Loading local model from {model_path}")
 
+            # Check if we should use smart fallback
+            use_smart_fallback = kwargs.get("use_smart_fallback", True)
+            
+            if use_smart_fallback:
+                # Get optimized config based on hardware
+                cpu_only = kwargs.get("cpu_only", False)
+                config = get_inference_config(cpu_only=cpu_only)
+                
+                # Log the mode
+                logger.info(f"TurboQuant mode: {config.mode.value}, "
+                           f"n_gpu_layers={config.n_gpu_layers}, "
+                           f"ctx={config.n_ctx}")
+                
+                # Use config values
+                load_kwargs = config.to_llama_kwargs()
+                
+                # Allow overrides from kwargs
+                for key in ["n_ctx", "n_gpu_layers", "n_threads", "n_batch"]:
+                    if key in kwargs:
+                        load_kwargs[key] = kwargs[key]
+                        
+                load_kwargs["verbose"] = kwargs.get("verbose", False)
+            else:
+                # Legacy mode: use kwargs directly
+                load_kwargs = {
+                    "n_ctx": kwargs.get("n_ctx", 8192),
+                    "n_gpu_layers": kwargs.get("n_gpu_layers", 35),
+                    "n_threads": kwargs.get("n_threads", 8),
+                    "verbose": kwargs.get("verbose", False),
+                }
+
             self._model = Llama(
                 model_path=model_path,
-                n_ctx=kwargs.get("n_ctx", 8192),
-                n_gpu_layers=kwargs.get("n_gpu_layers", 35),
-                n_threads=kwargs.get("n_threads", 8),
-                verbose=kwargs.get("verbose", False),
+                **load_kwargs
             )
 
             self._is_loaded = True
             self._is_remote = False
-            logger.info(f"Local model '{self.model_name}' loaded successfully")
+            
+            if use_smart_fallback:
+                config = get_inference_config()
+                logger.info(f"Local model '{self.model_name}' loaded successfully "
+                           f"({config.get_mode_description(config)})")
+            else:
+                logger.info(f"Local model '{self.model_name}' loaded successfully")
 
         except ImportError as e:
             raise InferenceError(
