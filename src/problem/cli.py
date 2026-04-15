@@ -374,6 +374,72 @@ def cmd_problem_diagnose(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_problem_decompose(args: argparse.Namespace) -> int:
+    """
+    `glitchhunter problem decompose` - Problem zerlegen.
+    """
+    from core.config import Config
+
+    config = Config.load(args.config if hasattr(args, 'config') else None)
+    repo_path = Path(config.repository.path)
+    manager = ProblemManager(repo_path=repo_path)
+
+    # Decomposition durchführen
+    try:
+        decomposition = manager.decompose_problem(args.problem_id)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+    # Ausgabe
+    print(f"\n✅ Problem zerlegt: {args.problem_id}")
+    print(f"\n{'='*60}")
+    print(f"Ansatz: {decomposition.decomposition_approach}")
+    print(f"\nTeilprobleme ({len(decomposition.subproblems)}):")
+    print(f"{'='*60}")
+
+    # Nach Priorität sortiert
+    sorted_subs = sorted(decomposition.subproblems, key=lambda x: x.priority)
+
+    for i, sp in enumerate(sorted_subs, 1):
+        status_icon = {
+            "open": "⚪",
+            "in_progress": "🔵",
+            "blocked": "🔴",
+            "done": "✅",
+        }.get(sp.status, "⚪")
+
+        print(f"\n{i}. {status_icon} {sp.title}")
+        print(f"   Typ: {sp.subproblem_type.value}")
+        print(f"   Priorität: {sp.priority}/10")
+        print(f"   Aufwand: {sp.effort}")
+
+        if sp.dependencies:
+            print(f"   Dependencies: {', '.join(sp.dependencies)}")
+
+        if sp.affected_components:
+            print(f"   Komponenten: {', '.join(sp.affected_components)}")
+
+    # Statistik
+    stats = decomposition.get_statistics()
+    print(f"\n{'='*60}")
+    print(f"Statistik:")
+    print(f"  Gesamt: {stats['total_subproblems']}")
+    print(f"  Ready: {stats['ready_count']}")
+    print(f"  Blocked: {stats['blocked_count']}")
+    print(f"  Blocking: {stats['blocking_count']}")
+
+    # Ausführungsreihenfolge
+    print(f"\n{'='*60}")
+    print(f"Ausführungsreihenfolge:")
+    order = decomposition.get_execution_order()
+    for i, sp in enumerate(order, 1):
+        print(f"  {i}. {sp.title}")
+
+    print(f"\n{'='*60}")
+    return 0
+
+
 def setup_problem_parser(subparsers) -> None:
     """
     Registriert Problem-Solver Commands im CLI-Parser.
@@ -506,3 +572,14 @@ def setup_problem_parser(subparsers) -> None:
         help="ID of the problem to diagnose",
     )
     diagnose_parser.set_defaults(func=cmd_problem_diagnose)
+
+    # decompose
+    decompose_parser = problem_subparsers.add_parser(
+        "decompose",
+        help="Decompose problem into subproblems",
+    )
+    decompose_parser.add_argument(
+        "problem_id",
+        help="ID of the problem to decompose",
+    )
+    decompose_parser.set_defaults(func=cmd_problem_decompose)

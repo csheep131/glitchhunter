@@ -20,6 +20,13 @@ from .diagnosis import (
     Uncertainty,
     DiagnosisEngine,
 )
+from .decomposition import (
+    SubProblem,
+    SubProblemType,
+    DependencyType,
+    Decomposition,
+    DecompositionEngine,
+)
 
 __all__ = [
     "ProblemCase",
@@ -37,4 +44,10 @@ __all__ = [
     "DataFlow",
     "Uncertainty",
     "DiagnosisEngine",
+    # Decomposition
+    "SubProblem",
+    "SubProblemType",
+    "DependencyType",
+    "Decomposition",
+    "DecompositionEngine",
 ]

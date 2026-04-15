@@ -112,6 +112,9 @@ agent:
   max_iterations: 5
   timeout_per_state: 300  # Sekunden
   
+  # Hypothesis Generation
+  max_hypothesis_candidates: 50  # Anzahl Kandidaten für Hypothesen (war: 10)
+  
   sandbox:
     enabled: true
     docker_image: "python:3.11-slim"

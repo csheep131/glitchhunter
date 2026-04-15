@@ -532,9 +532,32 @@ class StateMachine:
             agent = HypothesisAgent(llm_client=engine)
 
             all_hypotheses = []
+            
+            # Dynamically determine candidates based on findings
+            all_candidates = state.get("candidates", [])
+            prefilter_result = state.get("prefilter_result", {})
+            
+            # Prioritize: Security findings > Complexity > Git Churn
+            security_findings = prefilter_result.get("security_findings", 0)
+            complexity_hotspots = prefilter_result.get("complexity_hotspots", 0)
+            git_hotspots = prefilter_result.get("git_hotspots", 0)
+            
+            # Dynamic limit: Process ALL candidates (no artificial limit)
+            # Scale based on findings but include everything
+            if security_findings > 0:
+                # If we have security findings, prioritize but include all
+                dynamic_limit = len(all_candidates)
+            else:
+                # No security issues, still process all candidates
+                dynamic_limit = len(all_candidates)
+            
+            candidates = all_candidates[:dynamic_limit]
+            
+            logger.info(f"Dynamic candidate selection: {len(candidates)} of {len(all_candidates)} "
+                       f"(security: {security_findings}, complexity: {complexity_hotspots}, git: {git_hotspots})")
 
             # Generate hypotheses for candidates
-            for idx, candidate_dict in enumerate(state.get("candidates", [])[:10]):
+            for idx, candidate_dict in enumerate(candidates):
                 # Generiere eindeutige ID für jeden Kandidaten
                 candidate_id = candidate_dict.get("id", f"c{idx + 1}")
                 
@@ -577,7 +600,7 @@ class StateMachine:
             state["hypotheses"] = [h.to_dict() for h in all_hypotheses]
             state["metadata"]["hypothesis_complete"] = True
 
-            logger.info(f"✅ Generated {len(all_hypotheses)} hypotheses across {len(state.get('candidates', [])[:10])} candidates")
+            logger.info(f"✅ Generated {len(all_hypotheses)} hypotheses across {len(candidates)} candidates (dynamic limit: {dynamic_limit})")
 
         except Exception as e:
             logger.error(f"Hypothesis generation failed: {e}")

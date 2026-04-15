@@ -15,6 +15,7 @@ from .models import ProblemCase, ProblemType, ProblemSeverity, ProblemStatus
 from .intake import ProblemIntake
 from .classifier import ProblemClassifier, ClassificationResult
 from .diagnosis import Diagnosis, DiagnosisEngine, CauseType
+from .decomposition import Decomposition, DecompositionEngine
 
 logger = logging.getLogger(__name__)
 
@@ -409,3 +410,79 @@ class ProblemManager:
             json.dumps(diagnosis.to_dict(), indent=2, ensure_ascii=False)
         )
         return diagnosis_file
+
+    def decompose_problem(self, problem_id: str) -> Decomposition:
+        """
+        Zerlegt ein Problem in Teilprobleme.
+        
+        Args:
+            problem_id: ID des Problems
+        
+        Returns:
+            Decomposition-Objekt
+        
+        Raises:
+            ValueError: Wenn Problem nicht gefunden
+        """
+        problem = self.get_problem(problem_id)
+        if not problem:
+            raise ValueError(f"Problem {problem_id} not found")
+
+        logger.info(f"Decomposing problem: {problem_id}")
+
+        engine = DecompositionEngine()
+        decomposition = engine.decompose_problem(problem)
+
+        # Decomposition speichern
+        self._save_decomposition(problem_id, decomposition)
+
+        # Problem-Status aktualisieren
+        self.update_problem(problem_id, {"status": ProblemStatus.PLANNING.value})
+
+        logger.info(
+            f"Decomposition complete: {len(decomposition.subproblems)} subproblems"
+        )
+        return decomposition
+
+    def get_decomposition(self, problem_id: str) -> Optional[Decomposition]:
+        """
+        Lädt Decomposition für ein Problem.
+        
+        Args:
+            problem_id: ID des Problems
+        
+        Returns:
+            Decomposition oder None
+        """
+        decomp_file = self.problems_dir / f"{problem_id}_decomposition.json"
+
+        if decomp_file.exists():
+            try:
+                data = json.loads(decomp_file.read_text())
+                return Decomposition.from_dict(data)
+            except Exception as e:
+                logger.error(f"Failed to load decomposition: {e}")
+                return None
+
+        return None
+
+    def _save_decomposition(
+        self,
+        problem_id: str,
+        decomposition: Decomposition,
+    ) -> Path:
+        """
+        Speichert Decomposition persistently.
+        
+        Args:
+            problem_id: ID des Problems
+            decomposition: Zu speichernde Decomposition
+        
+        Returns:
+            Pfad zur gespeicherten Datei
+        """
+        decomp_file = self.problems_dir / f"{problem_id}_decomposition.json"
+        decomp_file.write_text(
+            json.dumps(decomposition.to_dict(), indent=2, ensure_ascii=False)
+        )
+        return decomp_file
