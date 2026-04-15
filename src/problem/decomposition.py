@@ -283,48 +283,53 @@ class Decomposition:
         """
         Berechnet Ausführungsreihenfolge basierend auf Dependencies.
         
+        Verwendet topologische Sortierung (Kahn's Algorithmus).
+        Ein SubProblem kann erst ausgeführt werden wenn alle seine
+        Dependencies (Vorgänger) erledigt sind.
+
         Returns:
             Sortierte Liste von SubProblems
         """
         # Topologische Sortierung
         from collections import deque
-        
-        # In-Degree berechnen
+
+        # In-Degree berechnen: Wie viele Dependencies hat jedes SubProblem?
+        # Wenn sp2.dependencies = [sp1.id], dann hängt sp2 von sp1 ab
+        # -> sp2 hat In-Degree 1, sp1 hat In-Degree 0
         in_degree: Dict[str, int] = {sp.id: 0 for sp in self.subproblems}
         for sp in self.subproblems:
-            for dep_id in sp.dependencies:
-                if dep_id in in_degree:
-                    in_degree[dep_id] += 1
-        
-        # Queue mit Nodes die keine Dependencies haben
+            # Jedes Dependency das sp hat, erhöht sp's In-Degree
+            in_degree[sp.id] = len(sp.dependencies)
+
+        # Queue mit Nodes die keine Dependencies haben (In-Degree 0)
         queue = deque([sp.id for sp in self.subproblems if in_degree[sp.id] == 0])
         result: List[SubProblem] = []
-        
+
         while queue:
-            # Node mit höchster Priorität zuerst
+            # Node mit höchster Priorität (niedrigster Wert) zuerst
             queue_list = list(queue)
             queue_list.sort(
                 key=lambda x: next(sp for sp in self.subproblems if sp.id == x).priority
             )
-            
+
             current_id = queue_list[0]
             queue.remove(current_id)
-            
+
             current = self.get_subproblem(current_id)
             if current:
                 result.append(current)
-            
-            # Nachfolger aktualisieren
+
+            # Nachfolger aktualisieren: Alle die von current abhängen
             for sp in self.subproblems:
                 if current_id in sp.dependencies:
                     in_degree[sp.id] -= 1
                     if in_degree[sp.id] == 0:
                         queue.append(sp.id)
-        
-        # Restliche (zyklische) hinzufügen
+
+        # Restliche (zyklische Dependencies) hinzufügen
         remaining = [sp for sp in self.subproblems if sp not in result]
         result.extend(sorted(remaining, key=lambda x: x.priority))
-        
+
         return result
     
     def get_statistics(self) -> Dict[str, Any]:

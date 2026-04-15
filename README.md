@@ -10,9 +10,9 @@ GlitchHunter is an intelligent code analysis tool that uses **local open-source 
 
 ## What's New in v2.0
 
-### Core "Wow" Features
+### Core Features
 
-- **Ensemble-Modus**: Multiple models (Qwen2.5 + DeepSeek + Phi-4) vote on the best fix with confidence scoring
+- **Ensemble Mode**: Multiple models (Qwen2.5 + DeepSeek + Phi-4) vote on the best fix with confidence scoring
 - **Self-Improving Rules**: Learns new patterns after each successful fix using Vector-DB integration
 - **Multi-Language First-Class Support**: JavaScript/TypeScript, Rust, Go, Python, Java, C/C++ on equal footing
 - **Incremental Scanning**: Only scans changed files/commits - 10k LOC in < 5 minutes
@@ -28,7 +28,7 @@ GlitchHunter is an intelligent code analysis tool that uses **local open-source 
 
 | Feature | Status | Implementation | Tests |
 |---------|--------|----------------|-------|
-| **Ensemble-Modus** | Complete | `src/escalation/ensemble_coordinator.py` | 40 Tests |
+| **Ensemble Mode** | Complete | `src/escalation/ensemble_coordinator.py` | 40 Tests |
 | **Symbol-Graph Caching** | Complete | `src/mapper/symbol_graph.py`, `repo_mapper.py` | 19 Tests |
 | **Draft-PR Integration** | Complete | `src/escalation/pr_creator.py` | 22 Tests |
 | **Self-Improving Rules** | Complete | `src/fixing/rule_learner.py` | 22 Tests |
@@ -39,7 +39,7 @@ GlitchHunter is an intelligent code analysis tool that uses **local open-source 
 
 ### Performance Benchmarks
 
-**Benchmark Results** (15. April 2026, own codebase):
+**Benchmark Results** (April 15, 2026, own codebase):
 
 | Metric | Result | Target | Status |
 |--------|--------|--------|--------|
@@ -105,6 +105,34 @@ python scripts/benchmark_v2.py --full  # Full benchmark incl. scan
 +---------------------------------------------------------------------+
 ```
 
+## Recommended Models
+
+GlitchHunter works best with these locally-run models. All are available via HuggingFace as GGUF quantized versions.
+
+### Primary Recommendations
+
+| Model | Size | Quantization | VRAM | Use Case | Download |
+|-------|------|--------------|------|----------|----------|
+| **Qwen2.5-Coder-7B** | 7B | Q4_K_M | ~4.5GB | Best overall balance | [HF Link](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF) |
+| **Qwen2.5-Coder-14B** | 14B | Q4_K_M | ~8.5GB | Better code understanding | [HF Link](https://huggingface.co/Qwen/Qwen2.5-Coder-14B-Instruct-GGUF) |
+| **DeepSeek-Coder-V2-Lite** | 16B | Q4_K_M | ~9GB | Excellent for security | [HF Link](https://huggingface.co/deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct-GGUF) |
+| **Phi-4** | 14B | Q4_K_M | ~8GB | Fast inference | [HF Link](https://huggingface.co/microsoft/Phi-4-instruct-GGUF) |
+
+### Quick Model Download
+
+```bash
+# Install huggingface-cli
+pip install huggingface-hub
+
+# Download recommended model (Qwen2.5-Coder-7B)
+huggingface-cli download Qwen/Qwen2.5-Coder-7B-Instruct-GGUF \
+    qwen2.5-coder-7b-instruct-q4_k_m.gguf \
+    --local-dir ~/.glitchhunter/models
+
+# Or download all recommended models
+./scripts/download_models.sh
+```
+
 ## Hardware Stacks
 
 ### Stack A: Consumer GPU (RTX 3060/4060)
@@ -134,17 +162,63 @@ python scripts/benchmark_v2.py --full  # Full benchmark incl. scan
 | Context | 4k-8k |
 | Scan Speed | ~10 min for 10k LOC |
 
-**TurboQuant Smart Fallback:** Ein Backend, drei Modi - automatisch gewählt:
-- **Full GPU** (8GB+ VRAM): Alle Layers auf GPU
-- **Hybrid** (4-8GB VRAM): Layer-adaptive GPU/CPU Balance
-- **CPU-Only** (Keine GPU): Alle Threads auf CPU
+**TurboQuant Smart Fallback:** One backend, three modes - automatically selected:
+- **Full GPU** (8GB+ VRAM): All layers on GPU (`n_gpu_layers=-1`)
+- **Hybrid** (4-8GB VRAM): Layer-adaptive GPU/CPU balance
+- **CPU-Only** (No GPU): All threads on CPU (`n_gpu_layers=0`)
 
 ```bash
 # CPU-only mode (no GPU required!)
 ./scripts/run_auto.sh --cpu-only scan /path/to/repo
 
-# Automatische Erkennung (wählt Full/Hybrid/CPU)
+# Automatic detection (selects Full/Hybrid/CPU)
 ./scripts/run_auto.sh scan /path/to/repo
+```
+
+## TurboQuant Configuration
+
+TurboQuant provides optimized inference with intelligent GPU/CPU fallback. All optimizations (KV-Cache quantization, Flash-Attention) work across all modes.
+
+### Mode Configuration
+
+```python
+from hardware.smart_fallback import get_inference_config, InferenceMode
+
+# Automatic detection
+config = get_inference_config()
+print(f"Mode: {config.mode.value}")  # full_gpu, hybrid, cpu_only
+print(f"GPU Layers: {config.n_gpu_layers}")  # -1, 0-35, or 0
+print(f"Threads: {config.n_threads}")
+print(f"Context: {config.n_ctx}")
+
+# Force CPU mode
+config = get_inference_config(cpu_only=True)
+
+# Get llama.cpp kwargs
+kwargs = config.to_llama_kwargs()
+# {'n_gpu_layers': -1, 'n_threads': 8, 'n_ctx': 128000, 
+#  'n_batch': 512, 'flash_attn': True, 'kv_cache_quantization': 'q4_0'}
+```
+
+### Mode Selection Logic
+
+| Available VRAM | Mode | n_gpu_layers | Context | Flash-Attention |
+|----------------|------|--------------|---------|-----------------|
+| 8GB+ | Full GPU | -1 (all) | 128k | Yes |
+| 4-8GB | Hybrid | 10-30 | 64k | Yes |
+| <4GB / CPU | CPU-Only | 0 | 8k | No |
+
+### Environment Variables
+
+```bash
+# Force CPU mode
+export GLITCHHUNTER_CPU_ONLY=1
+
+# Set specific GPU layers
+export GLITCHHUNTER_GPU_LAYERS=20
+
+# Override context size
+export GLITCHHUNTER_CONTEXT_SIZE=8192
 ```
 
 ## Quickstart
@@ -161,6 +235,9 @@ pip install -r requirements.txt
 
 # Optional: For CPU-only mode, install llama.cpp
 ./scripts/install_llama_cpp.sh
+
+# Download recommended models
+./scripts/download_models.sh
 ```
 
 ### Automatic Workflow (Recommended)
@@ -441,24 +518,24 @@ pytest tests/test_llama_cpp.py     # CPU fallback
 
 See [development/ROADMAP2_0.md](development/ROADMAP2_0.md) for detailed 12-week v2.0 implementation plan.
 
-### Phase 1 (Woche 1-3): Foundation [DONE]
-- [x] Ensemble-Modus + Voting-System
+### Phase 1 (Week 1-3): Foundation [DONE]
+- [x] Ensemble Mode + Voting System
 - [x] Symbol-Graph Caching + Incremental Scan Engine
 - [x] CPU-only llama.cpp Fallback
 - [x] Fix Confidence Score
 
-### Phase 2 (Woche 4-7): Intelligence
+### Phase 2 (Week 4-7): Intelligence
 - [ ] Self-Improving Rules (RuleLearner + Vector-DB)
 - [ ] Multi-Language Parity (Rust, Go, Java, C/C++)
 - [ ] Dynamic Analysis Sandbox (Coverage-guided Fuzzing)
 
-### Phase 3 (Woche 8-10): Automation
+### Phase 3 (Week 8-10): Automation
 - [ ] Draft-PR-Generation (GitHub + GitLab)
 - [ ] SBOM + Audit-Report Pipeline
 - [ ] Performance Benchmarks
 
-### Phase 4 (Woche 11-12): Release
-- [ ] Interne Dogfooding
+### Phase 4 (Week 11-12): Release
+- [ ] Internal Dogfooding
 - [ ] v2.0 Release
 
 ## License
