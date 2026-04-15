@@ -8,13 +8,6 @@
 
 set -e
 
-# Farben für Output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
 # Skript-Verzeichnis
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -23,6 +16,9 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 if [ -f "$PROJECT_DIR/venv/bin/activate" ]; then
     source "$PROJECT_DIR/venv/bin/activate"
 fi
+
+# Set PYTHONPATH fuer src imports (wichtig!)
+export PYTHONPATH="${PROJECT_DIR}/src:${PYTHONPATH:+:$PYTHONPATH}"
 
 # Parse Argumente
 COMMAND=""
@@ -33,8 +29,12 @@ FORCE_FULL=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        scan|fix)
-            COMMAND="$1"
+        scan|analyze)
+            COMMAND="analyze"
+            shift
+            ;;
+        fix)
+            COMMAND="analyze"  # fix = analyze + auto-apply
             shift
             ;;
         --cpu-only)
@@ -73,8 +73,8 @@ GlitchHunter v2.0 Auto-Runner
 Usage: ./run_auto.sh [COMMAND] [OPTIONS] <path>
 
 Commands:
-    scan        Security scan only
-    fix         Scan and auto-fix vulnerabilities
+    scan, analyze   Security scan only
+    fix             Scan and auto-fix vulnerabilities
 
 Options:
     --cpu-only      Force CPU-only mode (no GPU required)
@@ -85,6 +85,7 @@ Options:
 
 Examples:
     ./run_auto.sh scan /path/to/project
+    ./run_auto.sh analyze /path/to/project
     ./run_auto.sh fix --cpu-only /path/to/project
     ./run_auto.sh scan --incremental /path/to/project
     ./run_auto.sh fix --full --clear-cache /path/to/project
@@ -93,23 +94,23 @@ EOF
 }
 
 function detect_hardware() {
-    echo -e "${BLUE}🔍 Detecting hardware...${NC}"
+    echo "Detecting hardware..."
     
     # Prüfe CUDA
     if command -v nvidia-smi &> /dev/null; then
         GPU_MEM=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1)
         if [ -n "$GPU_MEM" ]; then
             GPU_GB=$((GPU_MEM / 1024))
-            echo -e "${GREEN}✓ GPU detected: ${GPU_GB}GB VRAM${NC}"
+            echo "[OK] GPU detected: ${GPU_GB}GB VRAM"
             
             if [ "$GPU_GB" -ge 20 ]; then
-                echo -e "${GREEN}  → Stack B (RTX 3090/4090)${NC}"
+                echo "     Stack B (RTX 3090/4090)"
                 STACK="b"
             elif [ "$GPU_GB" -ge 8 ]; then
-                echo -e "${GREEN}  → Stack A (RTX 3060/4060)${NC}"
+                echo "     Stack A (RTX 3060/4060)"
                 STACK="a"
             else
-                echo -e "${YELLOW}  → Low VRAM, using CPU fallback${NC}"
+                echo "     Low VRAM, using CPU fallback"
                 STACK="cpu"
             fi
             return
@@ -118,29 +119,29 @@ function detect_hardware() {
     
     # Prüfe ROCm
     if command -v rocminfo &> /dev/null; then
-        echo -e "${GREEN}✓ AMD GPU detected (ROCm)${NC}"
+        echo "[OK] AMD GPU detected (ROCm)"
         STACK="rocm"
         return
     fi
     
     # Keine GPU
-    echo -e "${YELLOW}⚠ No GPU detected, using CPU-only mode${NC}"
+    echo "[WARN] No GPU detected, using CPU-only mode"
     STACK="cpu"
 }
 
 function check_llama_cpp() {
     if ! command -v llama-cli &> /dev/null; then
-        echo -e "${YELLOW}⚠ llama.cpp not found${NC}"
-        echo -e "${YELLOW}  For CPU-only mode, install llama.cpp:${NC}"
-        echo -e "${YELLOW}  git clone https://github.com/ggerganov/llama.cpp${NC}"
-        echo -e "${YELLOW}  cd llama.cpp && cmake -B build && cmake --build build${NC}"
+        echo "[WARN] llama.cpp not found"
+        echo "       For CPU-only mode, install llama.cpp:"
+        echo "       git clone https://github.com/ggerganov/llama.cpp"
+        echo "       cd llama.cpp && cmake -B build && cmake --build build"
         
         if [ "$STACK" == "cpu" ]; then
-            echo -e "${RED}✗ llama.cpp required for CPU mode${NC}"
+            echo "[ERR] llama.cpp required for CPU mode"
             exit 1
         fi
     else
-        echo -e "${GREEN}✓ llama.cpp available${NC}"
+        echo "[OK] llama.cpp available"
     fi
 }
 
@@ -149,8 +150,8 @@ function download_model_if_needed() {
     MODEL_FILE="qwen2.5-coder-7b-instruct-q4_k_m.gguf"
     
     if [ ! -f "$MODEL_DIR/$MODEL_FILE" ]; then
-        echo -e "${YELLOW}⚠ Model not found: $MODEL_FILE${NC}"
-        echo -e "${YELLOW}  Downloading... (4.5GB)${NC}"
+        echo "[WARN] Model not found: $MODEL_FILE"
+        echo "       Downloading... (4.5GB)"
         
         mkdir -p "$MODEL_DIR"
         
@@ -160,8 +161,8 @@ function download_model_if_needed() {
                 "$MODEL_FILE" \
                 --local-dir "$MODEL_DIR"
         else
-            echo -e "${YELLOW}  Please install huggingface-cli:${NC}"
-            echo -e "${YELLOW}  pip install huggingface-hub${NC}"
+            echo "       Please install huggingface-cli:"
+            echo "       pip install huggingface-hub"
             exit 1
         fi
     fi
@@ -170,62 +171,52 @@ function download_model_if_needed() {
 function run_scan() {
     local target="$1"
     
-    echo -e "${BLUE}🚀 Starting GlitchHunter v2.0...${NC}"
-    echo -e "${BLUE}   Command: $COMMAND${NC}"
-    echo -e "${BLUE}   Target: $target${NC}"
-    echo -e "${BLUE}   Stack: $STACK${NC}"
-    
-    # Baue Python-Kommando
-    PYTHON_CMD="python -m src.main $COMMAND"
-    
-    if [ -n "$CPU_ONLY" ] || [ "$STACK" == "cpu" ]; then
-        PYTHON_CMD="$PYTHON_CMD --cpu-only"
-    fi
-    
-    if [ -n "$INCREMENTAL" ]; then
-        PYTHON_CMD="$PYTHON_CMD --incremental"
-    fi
-    
-    if [ -n "$FORCE_FULL" ]; then
-        PYTHON_CMD="$PYTHON_CMD --full-scan"
-    fi
-    
-    if [ -n "$CLEAR_CACHE" ]; then
-        PYTHON_CMD="$PYTHON_CMD --clear-cache"
-    fi
-    
-    PYTHON_CMD="$PYTHON_CMD \"$target\""
-    
-    echo -e "${BLUE}   Running: $PYTHON_CMD${NC}"
+    echo "Starting GlitchHunter v2.0..."
+    echo "   Command: $COMMAND"
+    echo "   Target: $target"
+    echo "   Stack: $STACK"
     echo ""
     
-    # Führe aus
-    cd "$PROJECT_DIR"
-    eval "$PYTHON_CMD"
+    # Wichtig: Ins src-Verzeichnis wechseln!
+    cd "$PROJECT_DIR/src"
+    
+    # Führe Analyse direkt aus (wie run_stack_a.sh)
+    python3 -c "
+from core.config import Config
+from core.logging_config import setup_logging
+from agent.state_machine import build_workflow
+config = Config.load()
+setup_logging(config.logging, log_level='INFO')
+workflow = build_workflow()
+result = workflow.run('$target')
+print('Analysis complete!')
+print(f'State: {result.get(\"current_state\", \"unknown\")}')
+print(f'Errors: {result.get(\"errors\", [])}')
+"
 }
 
 # Hauptlogik
 function main() {
-    echo -e "${GREEN}════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}     GlitchHunter v2.0 Auto-Runner${NC}"
-    echo -e "${GREEN}════════════════════════════════════════════════${NC}"
+    echo "================================================"
+    echo "     GlitchHunter v2.0 Auto-Runner"
+    echo "================================================"
     echo ""
     
     # Validierung
     if [ -z "$COMMAND" ]; then
-        echo -e "${RED}✗ Error: No command specified${NC}"
+        echo "[ERR] Error: No command specified"
         show_help
         exit 1
     fi
     
     if [ -z "$TARGET_PATH" ]; then
-        echo -e "${RED}✗ Error: No target path specified${NC}"
+        echo "[ERR] Error: No target path specified"
         show_help
         exit 1
     fi
     
     if [ ! -d "$TARGET_PATH" ]; then
-        echo -e "${RED}✗ Error: Directory not found: $TARGET_PATH${NC}"
+        echo "[ERR] Error: Directory not found: $TARGET_PATH"
         exit 1
     fi
     
@@ -233,7 +224,7 @@ function main() {
     if [ -z "$CPU_ONLY" ]; then
         detect_hardware
     else
-        echo -e "${BLUE}🔧 CPU-only mode forced${NC}"
+        echo "[INFO] CPU-only mode forced"
         STACK="cpu"
     fi
     
@@ -251,9 +242,9 @@ function main() {
     run_scan "$TARGET_PATH"
     
     echo ""
-    echo -e "${GREEN}════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}     GlitchHunter v2.0 Complete${NC}"
-    echo -e "${GREEN}════════════════════════════════════════════════${NC}"
+    echo "================================================"
+    echo "     GlitchHunter v2.0 Complete"
+    echo "================================================"
 }
 
 main
