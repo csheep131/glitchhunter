@@ -2,52 +2,52 @@
   <img src="logo/glitchhunter.png" alt="GlitchHunter Logo" width="400">
 </p>
 
-# GlitchHunter v2.0 🚀
+# GlitchHunter v2.0
 
 **Local Open-Source LLM-powered Code Analysis & Auto-Fix with Ensemble Intelligence**
 
 GlitchHunter is an intelligent code analysis tool that uses **local open-source LLMs** (Qwen, Phi, DeepSeek) to not only find bugs and security vulnerabilities but **automatically and safely fix them**. v2.0 introduces **Multi-Model Ensemble Voting**, **Self-Improving Rules**, **Incremental Scanning**, and **CPU-only Fallback** for maximum flexibility.
 
-## ✨ What's New in v2.0
+## What's New in v2.0
 
-### 🎯 Core "Wow" Features
+### Core "Wow" Features
 
-- **🗳️ Ensemble-Modus**: Multiple models (Qwen2.5 + DeepSeek + Phi-4) vote on the best fix with confidence scoring
-- **🧠 Self-Improving Rules**: Learns new patterns after each successful fix using Vector-DB integration
-- **🌍 Multi-Language First-Class Support**: JavaScript/TypeScript, Rust, Go, Python, Java, C/C++ on equal footing
-- **⚡ Incremental Scanning**: Only scans changed files/commits - 10k LOC in < 5 minutes
-- **💻 CPU-only Fallback**: Full llama.cpp + GGUF support (Q4_K_M, Q5_K_M) - no GPU required
+- **Ensemble-Modus**: Multiple models (Qwen2.5 + DeepSeek + Phi-4) vote on the best fix with confidence scoring
+- **Self-Improving Rules**: Learns new patterns after each successful fix using Vector-DB integration
+- **Multi-Language First-Class Support**: JavaScript/TypeScript, Rust, Go, Python, Java, C/C++ on equal footing
+- **Incremental Scanning**: Only scans changed files/commits - 10k LOC in < 5 minutes
+- **CPU-only Fallback**: Full llama.cpp + GGUF support (Q4_K_M, Q5_K_M) - no GPU required
 
-### 🔒 Security & Transparency
+### Security & Transparency
 
-- **📊 Fix Confidence Score**: Every fix gets a 0-100 score with natural language explanation
-- **📦 SBOM + Audit Reports**: Automatic with `syft` + `grype` on every release
-- **🔄 Symbol-Graph Caching**: Disk + Redis-like caching for blazing fast re-scans
+- **Fix Confidence Score**: Every fix gets a 0-100 score with natural language explanation
+- **SBOM + Audit Reports**: Automatic with `syft` + `grype` on every release
+- **Symbol-Graph Caching**: Disk + Redis-like caching for blazing fast re-scans
 
-### 📊 v2.0 Implementation Status (April 2026)
+### v2.0 Implementation Status (April 2026)
 
 | Feature | Status | Implementation | Tests |
 |---------|--------|----------------|-------|
-| **Ensemble-Modus** | ✅ Complete | `src/escalation/ensemble_coordinator.py` | 40 Tests |
-| **Symbol-Graph Caching** | ✅ Complete | `src/mapper/symbol_graph.py`, `repo_mapper.py` | 19 Tests |
-| **Draft-PR Integration** | ✅ Complete | `src/escalation/pr_creator.py` | 22 Tests |
-| **Self-Improving Rules** | ✅ Complete | `src/fixing/rule_learner.py` | 22 Tests |
-| **Multi-Language Support** | ✅ Complete | Tree-sitter (8 languages) | Existing |
-| **Dynamic Analysis** | ⏳ Pending | - | - |
+| **Ensemble-Modus** | Complete | `src/escalation/ensemble_coordinator.py` | 40 Tests |
+| **Symbol-Graph Caching** | Complete | `src/mapper/symbol_graph.py`, `repo_mapper.py` | 19 Tests |
+| **Draft-PR Integration** | Complete | `src/escalation/pr_creator.py` | 22 Tests |
+| **Self-Improving Rules** | Complete | `src/fixing/rule_learner.py` | 22 Tests |
+| **Multi-Language Support** | Complete | Tree-sitter (8 languages) | Existing |
+| **Dynamic Analysis** | Pending | - | - |
 
 **Overall Progress: ~70% of v2.0 features implemented**
 
-### 🚀 Performance Benchmarks
+### Performance Benchmarks
 
 **Benchmark Results** (15. April 2026, own codebase):
 
 | Metric | Result | Target | Status |
 |--------|--------|--------|--------|
-| **Lines of Code Scanned** | 3,753,696 LOC | - | ✅ |
-| **Prefilter Performance** | 276,617 LOC/s | >2,000 LOC/s | ✅ Exzellent |
-| **Symbol-Graph Build** | 0.41s | <1s | ✅ |
-| **Incremental Scan** | 0.40s (cached) | <2s | ✅ |
-| **Total Scan Time** | ~14s | <5min for 10k LOC | ✅ |
+| **Lines of Code Scanned** | 3,753,696 LOC | - | OK |
+| **Prefilter Performance** | 276,617 LOC/s | >2,000 LOC/s | Excellent |
+| **Symbol-Graph Build** | 0.41s | <1s | OK |
+| **Incremental Scan** | 0.40s (cached) | <2s | OK |
+| **Total Scan Time** | ~14s | <5min for 10k LOC | OK |
 
 ```bash
 # Run benchmarks
@@ -68,41 +68,41 @@ python scripts/benchmark_v2.py --full  # Full benchmark incl. scan
 ## How It Works
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    GLITCHHUNTER v2.0 PIPELINE                       │
-│             (Fully Automated with Ensemble Intelligence)            │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  1. INGESTION: Repository scanning & understanding                 │
-│     • Tree-sitter AST analysis (Multi-Language)                    │
-│     • Symbol-Graph Caching (Incremental Scans)                     │
-│     • Smart Ignore system (.glitchignore)                          │
-│                                                                     │
-│  2. SHIELD: Bugs & Security vulnerabilities finding                │
-│     • Semgrep Security Scan (OWASP Top 10)                         │
-│     • AI Hypothesis Generation (LLM-driven for unknown types)      │
-│     • Data-Flow Graph analysis                                     │
-│                                                                     │
-│  3. ENSEMBLE: Multi-Model Voting (NEW in v2.0)                     │
-│     • 3+ Models generate fix proposals                             │
-│     • VotingEngine selects best fix                                │
-│     • ConfidenceCalculator validates quality                       │
-│                                                                     │
-│  4. PATCH LOOP: Secure fixes generation                            │
-│     • LLM generates minimal patch                                  │
-│     • 4 Safety Gates: Syntax, Sandbox, Verifier, Coverage          │
-│     • Fix Confidence Score (0-100) with explanation                │
-│                                                                     │
-│  5. RULE LEARNER: Self-Improving (NEW in v2.0)                     │
-│     • Successful fixes → New Semgrep rules                         │
-│     • Vector-DB storage (Qdrant/ChromaDB)                          │
-│                                                                     │
-│  6. FINALIZER: Merge fixes & reporting                             │
-│     • Git-Worktree merge with commit                               │
-│     • Automatic Markdown/JSON Report generation                    │
-│     • SBOM + Audit Report                                          │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
++---------------------------------------------------------------------+
+|                    GLITCHHUNTER v2.0 PIPELINE                       |
+|             (Fully Automated with Ensemble Intelligence)            |
++---------------------------------------------------------------------+
+|                                                                     |
+|  1. INGESTION: Repository scanning & understanding                 |
+|     - Tree-sitter AST analysis (Multi-Language)                    |
+|     - Symbol-Graph Caching (Incremental Scans)                     |
+|     - Smart Ignore system (.glitchignore)                          |
+|                                                                     |
+|  2. SHIELD: Bugs & Security vulnerabilities finding                |
+|     - Semgrep Security Scan (OWASP Top 10)                         |
+|     - AI Hypothesis Generation (LLM-driven for unknown types)      |
+|     - Data-Flow Graph analysis                                     |
+|                                                                     |
+|  3. ENSEMBLE: Multi-Model Voting (NEW in v2.0)                     |
+|     - 3+ Models generate fix proposals                             |
+|     - VotingEngine selects best fix                                |
+|     - ConfidenceCalculator validates quality                       |
+|                                                                     |
+|  4. PATCH LOOP: Secure fixes generation                            |
+|     - LLM generates minimal patch                                  |
+|     - 4 Safety Gates: Syntax, Sandbox, Verifier, Coverage          |
+|     - Fix Confidence Score (0-100) with explanation                |
+|                                                                     |
+|  5. RULE LEARNER: Self-Improving (NEW in v2.0)                     |
+|     - Successful fixes -> New Semgrep rules                         |
+|     - Vector-DB storage (Qdrant/ChromaDB)                          |
+|                                                                     |
+|  6. FINALIZER: Merge fixes & reporting                             |
+|     - Git-Worktree merge with commit                               |
+|     - Automatic Markdown/JSON Report generation                    |
+|     - SBOM + Audit Report                                          |
+|                                                                     |
++---------------------------------------------------------------------+
 ```
 
 ## Hardware Stacks
@@ -207,18 +207,18 @@ Every fix receives a detailed score (0-100) with explanation:
 Fix Confidence: 92/100
 
 Factors:
-  ✓ Syntax Validity: 100/100
-  ✓ Test Preservation: 95/100 (19/20 tests passing)
-  ✓ No New Dependencies: 100/100
-  ⚠ API Compatibility: 85/100 (signature changed)
-  ✓ Semantic Correctness: 90/100
+  [OK] Syntax Validity: 100/100
+  [OK] Test Preservation: 95/100 (19/20 tests passing)
+  [OK] No New Dependencies: 100/100
+  [WARN] API Compatibility: 85/100 (signature changed)
+  [OK] Semantic Correctness: 90/100
 
-Explanation: Fix Confidence: 92% – Hervorragende Qualität. 
-Stärken: Syntax Validity, No New Dependencies. 
-Achtung bei: API Compatibility.
+Explanation: Fix Confidence: 92% - Excellent quality. 
+Strengths: Syntax Validity, No New Dependencies. 
+Attention: API Compatibility.
 
 Recommendations:
-  - API-Änderungen dokumentieren
+  - Document API changes
 ```
 
 ### Incremental Scanning
@@ -382,9 +382,9 @@ GlitchHunter v2.0 uses a **Regression-Proof Fixing** principle with 4 Safety Gat
    - Fail2Pass principle
 
 5. **Gate 5: Confidence Threshold (v2.0)**
-   - Fixes unter 70% Confidence werden markiert
-   - Erklärung für niedrige Scores
-   - Manuelle Review-Empfehlung
+   - Fixes under 70% Confidence are flagged
+   - Explanation for low scores
+   - Manual review recommendation
 
 **Result:** Every fix is safe, explained, and confidence-scored.
 
@@ -411,20 +411,20 @@ pytest tests/test_llama_cpp.py     # CPU fallback
 | 10k LOC Scan | 15 min | 4 min | **3.75x** |
 | Re-scan | 15 min | 30 sec | **30x** (incremental) |
 | Fix Quality* | 78% | 91% | **+17%** (ensemble) |
-| CPU-only Mode | ❌ | ✅ | **NEW** |
+| CPU-only Mode | - | YES | **NEW** |
 | Multi-Language | Partial | Full | **+3 languages** |
 
-*Fix Quality = erfolgreiche Fixes / generierte Fixes
+*Fix Quality = successful fixes / generated fixes
 
 ## Why GlitchHunter?
 
 | Feature | GlitchHunter v2.0 | Commercial Tools |
 |---------|-------------------|------------------|
 | Local LLMs | 100% local | Cloud-API |
-| Ensemble Voting | ✅ Multi-Model | Single Model |
-| CPU-Only Mode | ✅ Full support | ❌ Cloud-only |
-| Self-Improving | ✅ Learns patterns | Static rules |
-| Confidence Score | ✅ 0-100 + Explanation | Black box |
+| Ensemble Voting | YES Multi-Model | Single Model |
+| CPU-Only Mode | YES Full support | Cloud-only |
+| Self-Improving | YES Learns patterns | Static rules |
+| Confidence Score | YES 0-100 + Explanation | Black box |
 | Cost | Open Source | $$$ subscriptions |
 | Data Privacy | No cloud | Cloud-based |
 | Customizable | Fully | Closed |
@@ -433,7 +433,7 @@ pytest tests/test_llama_cpp.py     # CPU fallback
 
 See [development/ROADMAP2_0.md](development/ROADMAP2_0.md) for detailed 12-week v2.0 implementation plan.
 
-### Phase 1 (Woche 1-3): Foundation ✅
+### Phase 1 (Woche 1-3): Foundation [DONE]
 - [x] Ensemble-Modus + Voting-System
 - [x] Symbol-Graph Caching + Incremental Scan Engine
 - [x] CPU-only llama.cpp Fallback
@@ -467,4 +467,4 @@ MIT License
 
 ---
 
-**GlitchHunter v2.0** - Finds bugs. Fixes them safely. Learns from success. 🚀
+**GlitchHunter v2.0** - Finds bugs. Fixes them safely. Learns from success.
