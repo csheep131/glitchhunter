@@ -375,3 +375,207 @@ class CompleteStatus(BaseModel):
     socraticode: SocratiCodeStatus = Field(..., description="SocratiCode MCP status")
     system: SystemResources = Field(..., description="System resources")
     uptime_seconds: int = Field(..., description="API uptime in seconds")
+
+
+# =============================================================================
+# Problem-Solver Schemas
+# =============================================================================
+
+
+class ProblemIntakeRequest(BaseModel):
+    """Request to create a new problem."""
+    
+    description: str = Field(
+        ..., 
+        description="Problem description (raw text)",
+        min_length=1,
+        strip_whitespace=True,
+    )
+    title: Optional[str] = Field(None, description="Optional title")
+    source: str = Field("api", description="Source (cli, api, tui, file)")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "description": "Die API ist sehr langsam bei großen Datenmengen",
+                "title": "Performance-Probleme in der API",
+                "source": "api",
+            }
+        }
+    }
+
+
+class ProblemUpdateRequest(BaseModel):
+    """Request to update a problem."""
+    
+    title: Optional[str] = Field(None, description="New title")
+    raw_description: Optional[str] = Field(None, description="New description")
+    goal_state: Optional[str] = Field(None, description="Goal state")
+    constraints: Optional[List[str]] = Field(None, description="Constraints")
+    success_criteria: Optional[List[str]] = Field(None, description="Success criteria")
+    status: Optional[str] = Field(None, description="Problem status")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "title": "Updated title",
+                "status": "diagnosis",
+            }
+        }
+    }
+
+
+class ProblemResponse(BaseModel):
+    """Response with problem details."""
+    
+    id: str = Field(..., description="Problem ID")
+    title: str = Field(..., description="Problem title")
+    raw_description: str = Field(..., description="Raw description")
+    problem_type: str = Field(..., description="Problem type")
+    severity: str = Field(..., description="Severity level")
+    status: str = Field(..., description="Current status")
+    goal_state: Optional[str] = Field(None, description="Goal state")
+    constraints: List[str] = Field(default_factory=list, description="Constraints")
+    affected_components: List[str] = Field(
+        default_factory=list, description="Affected components"
+    )
+    success_criteria: List[str] = Field(
+        default_factory=list, description="Success criteria"
+    )
+    risk_level: Optional[str] = Field(None, description="Risk level")
+    risk_factors: List[str] = Field(default_factory=list, description="Risk factors")
+    created_at: str = Field(..., description="Creation timestamp")
+    updated_at: str = Field(..., description="Last update timestamp")
+    source: str = Field(..., description="Problem source")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": "prob_20260415_001",
+                "title": "Performance-Probleme in der API",
+                "raw_description": "Die API ist sehr langsam...",
+                "problem_type": "performance",
+                "severity": "high",
+                "status": "intake",
+                "goal_state": "Antwortzeit unter 100ms",
+                "constraints": ["Keine Datenbank-Änderungen"],
+                "affected_components": ["api", "database"],
+                "success_criteria": ["p95 < 100ms"],
+                "risk_level": "high",
+                "risk_factors": ["Kundenbeschwerden"],
+                "created_at": "2026-04-15T10:00:00",
+                "updated_at": "2026-04-15T10:00:00",
+                "source": "api",
+            }
+        }
+    }
+
+
+class ProblemListResponse(BaseModel):
+    """Response with list of problems."""
+    
+    problems: List[ProblemResponse] = Field(..., description="List of problems")
+    total: int = Field(..., description="Total count")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "problems": [],
+                "total": 0,
+            }
+        }
+    }
+
+
+class ClassificationResultResponse(BaseModel):
+    """Response with classification result."""
+    
+    problem_id: str = Field(..., description="Problem ID")
+    problem_type: str = Field(..., description="Classified problem type")
+    confidence: float = Field(..., description="Confidence score (0-1)")
+    keywords_found: List[str] = Field(
+        default_factory=list, description="Keywords found in description"
+    )
+    affected_components: List[str] = Field(
+        default_factory=list, description="Affected components"
+    )
+    recommended_actions: List[str] = Field(
+        default_factory=list, description="Recommended actions"
+    )
+    alternatives: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Alternative classifications"
+    )
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "problem_id": "prob_20260415_001",
+                "problem_type": "performance",
+                "confidence": 0.85,
+                "keywords_found": ["langsam", "API", "Timeout"],
+                "affected_components": ["api", "database"],
+                "recommended_actions": [
+                    "Database-Queries analysieren",
+                    "Caching-Strategie prüfen",
+                ],
+                "alternatives": [
+                    {"problem_type": "bug", "confidence": 0.15}
+                ],
+            }
+        }
+    }
+
+
+class ProblemStatisticsResponse(BaseModel):
+    """Response with problem statistics."""
+    
+    total_problems: int = Field(..., description="Total number of problems")
+    by_type: Dict[str, int] = Field(
+        ..., description="Problems grouped by type"
+    )
+    by_status: Dict[str, int] = Field(
+        ..., description="Problems grouped by status"
+    )
+    oldest_problem: Optional[str] = Field(
+        None, description="Oldest problem timestamp"
+    )
+    newest_problem: Optional[str] = Field(
+        None, description="Newest problem timestamp"
+    )
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "total_problems": 5,
+                "by_type": {
+                    "performance": 3,
+                    "bug": 2,
+                },
+                "by_status": {
+                    "intake": 2,
+                    "diagnosis": 2,
+                    "planning": 1,
+                },
+                "oldest_problem": "2026-04-14T10:00:00",
+                "newest_problem": "2026-04-15T10:00:00",
+            }
+        }
+    }
+
+
+class ProblemDeleteResponse(BaseModel):
+    """Response after deleting a problem."""
+    
+    success: bool = Field(..., description="Whether deletion was successful")
+    problem_id: str = Field(..., description="Deleted problem ID")
+    message: str = Field(..., description="Status message")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "success": True,
+                "problem_id": "prob_20260415_001",
+                "message": "Problem deleted successfully",
+            }
+        }
+    }

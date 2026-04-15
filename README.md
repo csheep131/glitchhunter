@@ -134,9 +134,17 @@ python scripts/benchmark_v2.py --full  # Full benchmark incl. scan
 | Context | 4k-8k |
 | Scan Speed | ~10 min for 10k LOC |
 
+**TurboQuant Smart Fallback:** Ein Backend, drei Modi - automatisch gewählt:
+- **Full GPU** (8GB+ VRAM): Alle Layers auf GPU
+- **Hybrid** (4-8GB VRAM): Layer-adaptive GPU/CPU Balance
+- **CPU-Only** (Keine GPU): Alle Threads auf CPU
+
 ```bash
 # CPU-only mode (no GPU required!)
-glitchhunter --cpu-only scan /path/to/repo
+./scripts/run_auto.sh --cpu-only scan /path/to/repo
+
+# Automatische Erkennung (wählt Full/Hybrid/CPU)
+./scripts/run_auto.sh scan /path/to/repo
 ```
 
 ## Quickstart

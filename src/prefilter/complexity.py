@@ -450,7 +450,11 @@ class ComplexityAnalyzer:
         return hotspots[:max_results]
 
     def _analyze_with_radon(self, file_path: Path) -> ComplexityMetrics:
-        """Analyze file using Radon."""
+        """Analyze file using Radon (Python only)."""
+        # Radon only works with Python files
+        if not file_path.suffix.endswith('.py'):
+            return self._analyze_with_lizard(file_path)
+        
         try:
             from radon.complexity import cc_visit
             from radon.metrics import h_visit, mi_visit
@@ -520,7 +524,11 @@ class ComplexityAnalyzer:
             return self._analyze_simple(file_path)
 
     def _analyze_with_lizard(self, file_path: Path) -> ComplexityMetrics:
-        """Analyze file using Lizard."""
+        """Analyze file using Lizard (Python only)."""
+        # Lizard works best with Python files
+        if not file_path.suffix.endswith('.py'):
+            return self._analyze_simple(file_path)
+        
         try:
             import lizard
 

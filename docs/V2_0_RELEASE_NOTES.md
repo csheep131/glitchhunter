@@ -47,23 +47,26 @@ Persistenter Disk-Cache für Symbol-Graphen.
 - 10% geändert: **8.5x schneller**
 - Hit-Rate: Typisch 80-95%
 
-### 3. CPU-Only Fallback ✅
+### 3. TurboQuant Smart Fallback ✅
 
-Vollständige Unterstützung für CPU-only Inference via llama.cpp.
+Intelligenter Fallback zwischen GPU und CPU - **ein Backend, alle Modi**.
 
 **Module:**
-- `src/inference/llama_cpp_backend.py` - llama.cpp Integration
-- `src/hardware/auto_detect.py` - Automatische Hardware-Erkennung
+- `src/hardware/smart_fallback.py` - Intelligente Modus-Selektion
+- `src/inference/engine.py` - Integrierte Fallback-Logik
+- `src/inference/model_loader.py` - Smart Model Loading
 
 **Features:**
-- GGUF-Modell-Support (Q4_K_M, Q5_K_M)
-- Automatische Hardware-Detection
-- Multi-Backend Fallback-Chain
+- **Ein einheitliches Backend** - Keine Code-Duplikation
+- **Drei Modi automatisch:**
+  - Full GPU (n_gpu_layers=-1): 8GB+ VRAM
+  - Hybrid (n_gpu_layers=10-30): 4-8GB VRAM  
+  - CPU-Only (n_gpu_layers=0): Keine GPU
+- **TurboQuant-Optimierungen erhalten:** KV-Cache, Flash-Attention
+- **Graceful Degradation:** Läuft auf jedem System
 
-**Unterstützte Modelle:**
-- Qwen2.5-Coder-7B (4.5 GB)
-- DeepSeek-Coder-6.7B (4.0 GB)
-- Phi-4 (2.8 GB)
+**Vorteil:** Alle Optimierungen (KV-Cache Quantisierung, Flash-Attention) 
+bleiben in allen Modi aktiv - auch im CPU-Modus!
 
 ### 4. Fix Confidence Score ✅
 

@@ -22,6 +22,7 @@ from tui.widgets.directory_browser import DirectoryBrowserWidget
 from tui.screens.analyze import AnalyzeScreen
 from tui.screens.quick_scan import QuickScanScreen
 from tui.screens.report_browser import ReportBrowserScreen
+from tui.screens.problem_overview import ProblemOverviewScreen
 
 
 class GlitchHunterTUI(App):
@@ -107,6 +108,7 @@ class GlitchHunterTUI(App):
         Binding("r", "refresh", "Refresh", show=True),
         Binding("f2", "analyze", "Analyse", show=True),
         Binding("f3", "reports", "Reports", show=True),
+        Binding("f4", "problems", "Problem-Solver", show=True),
         Binding("f5", "restart_api", "API Restart", show=True),
         Binding("?", "help", "Hilfe", show=True),
     ]
@@ -119,7 +121,12 @@ class GlitchHunterTUI(App):
     system_data = reactive({})
     socraticode_data = reactive({})
     uptime = reactive(0)
-    
+
+    @property
+    def repo_path(self) -> Path:
+        """Returns the current repository path."""
+        return self.selected_path
+
     def __init__(self):
         super().__init__()
         self.api_client = TUIApiClient()
@@ -142,6 +149,7 @@ class GlitchHunterTUI(App):
                 with Horizontal(id="action-bar"):
                     yield Button("🔍 Analyse (F2)", id="btn-analyze", variant="primary")
                     yield Button("📊 Reports (F3)", id="btn-reports")
+                    yield Button("📝 Problem-Solver", id="btn-problems", variant="success")
                     yield Button("🔄 Refresh (F5)", id="btn-refresh")
                     yield Button("⚙️ API Restart", id="btn-api-restart", variant="error")
 
@@ -276,7 +284,11 @@ class GlitchHunterTUI(App):
     def action_reports(self):
         """Open report browser."""
         self.push_screen(ReportBrowserScreen())
-    
+
+    def action_problems(self):
+        """Open Problem-Solver overview."""
+        self.push_screen(ProblemOverviewScreen(repo_path=str(self.repo_path)))
+
     def action_restart_api(self):
         """Restart API."""
         self.log_message("API restart requested (not implemented)", "WARNING")
@@ -290,6 +302,7 @@ class GlitchHunterTUI(App):
         [b]Tastenkürzel:[/b]
         • F2 - Analyse starten (Directory Browser)
         • F3 - Report Center (Reports + Fix-Läufe)
+        • F4 - Problem-Solver (Neu!)
         • R - Daten aktualisieren
         • F5 - API neu starten
         • Q / Escape - Beenden
@@ -302,10 +315,17 @@ class GlitchHunterTUI(App):
         • 🚀 Fix-Lauf direkt starten
         • 📄 Markdown/JSON Viewer
 
+        [b]Problem-Solver (Neu):[/b]
+        • 📝 Probleme aufnehmen und verwalten
+        • 🔍 Probleme klassifizieren (AI-gestützt)
+        • 📋 Probleme nach Status/Typ filtern
+        • 👁️ Details anzeigen
+
         [b]Neu:[/b]
         • Directory Browser - Wähle Verzeichnisse visuell
         • Report Manager - Auto-Erkennung aller Reports
         • Fix-Lauf Integration - Starte direkt aus Reports
+        • Problem-Solver - Ganzheitliches Problem-Management
 
         [b]Panels:[/b]
         • Stack Info - Zeigt aktiven Stack (A/B)
@@ -330,6 +350,8 @@ class GlitchHunterTUI(App):
             self.action_analyze()
         elif button_id == "btn-reports":
             self.action_reports()
+        elif button_id == "btn-problems":
+            self.action_problems()
         elif button_id == "btn-refresh":
             self.action_refresh()
         elif button_id == "btn-api-stop":

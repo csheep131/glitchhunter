@@ -17,6 +17,9 @@ from pathlib import Path
 # Ensure src/ is importable
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Problem-Solver imports (parallel to bug-hunting)
+from problem.cli import setup_problem_parser
+
 # Global list of child processes to clean up
 _child_processes = []
 
@@ -250,6 +253,9 @@ def main() -> int:
     api_parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
     api_parser.add_argument("--port", type=int, default=8000, help="Port to bind to")
 
+    # Problem-Solver commands (parallel to bug-hunting)
+    setup_problem_parser(subparsers)
+
     args = parser.parse_args()
 
     if args.command == "analyze":
@@ -258,6 +264,16 @@ def main() -> int:
         return cmd_check(args)
     elif args.command == "api":
         return cmd_api(args)
+    elif args.command == "problem":
+        # Problem-Solver subcommand wurde aufgerufen
+        if hasattr(args, 'func'):
+            return args.func(args)
+        else:
+            # Kein Subcommand angegeben, zeige Hilfe
+            problem_parser = subparsers.choices.get('problem')
+            if problem_parser:
+                problem_parser.print_help()
+            return 1
     else:
         parser.print_help()
         return 1

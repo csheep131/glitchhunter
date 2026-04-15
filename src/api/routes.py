@@ -28,6 +28,14 @@ from api.schemas import (
     SystemResources,
     SocratiCodeStatus,
     CompleteStatus,
+    # Problem-Solver Schemas
+    ProblemIntakeRequest,
+    ProblemUpdateRequest,
+    ProblemResponse,
+    ProblemListResponse,
+    ClassificationResultResponse,
+    ProblemStatisticsResponse,
+    ProblemDeleteResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -670,6 +678,393 @@ async def get_socraticode_status() -> SocratiCodeStatus:
     """Get SocratiCode MCP integration status."""
     status = _get_socraticode_status()
     return SocratiCodeStatus(**status)
+
+
+# =============================================================================
+# Problem-Solver Endpoints
+# =============================================================================
+
+# In-memory storage für Problem-Solver (wird durch ProblemManager verwaltet)
+_problem_managers: Dict[str, Any] = {}
+
+
+def _get_problem_manager(repo_path: Optional[str] = None) -> Any:
+    """
+    Holt oder erstellt ProblemManager für Repository.
+    
+    Args:
+        repo_path: Optionaler Repository-Pfad (default: config.repository.path)
+    
+    Returns:
+        ProblemManager Instanz
+    """
+    from core.config import Config
+    from problem.manager import ProblemManager
+    
+    if not repo_path:
+        config = Config.load()
+        repo_path = config.repository.path
+    
+    # Manager im Cache suchen
+    if repo_path in _problem_managers:
+        return _problem_managers[repo_path]
+    
+    # Neuen Manager erstellen
+    manager = ProblemManager(repo_path=Path(repo_path))
+    _problem_managers[repo_path] = manager
+    
+    return manager
+
+
+@router.post(
+    "/problems",
+    response_model=ProblemResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Problem-Solver"],
+)
+async def create_problem(
+    request: ProblemIntakeRequest,
+) -> ProblemResponse:
+    """
+    Neues Problem aufnehmen.
+    
+    Erstellt ein neues ProblemCase aus einer rohen Problembeschreibung.
+    Führt automatische initiale Klassifikation durch.
+    
+    Args:
+        request: ProblemIntakeRequest mit Beschreibung und optionalen Metadaten
+    
+    Returns:
+        ProblemResponse mit erstelltem Problem
+    """
+    manager = _get_problem_manager()
+    
+    # Problem aufnehmen
+    problem = manager.intake_problem(
+        description=request.description,
+        title=request.title,
+        source=request.source,
+    )
+    
+    return ProblemResponse(
+        id=problem.id,
+        title=problem.title,
+        raw_description=problem.raw_description,
+        problem_type=problem.problem_type.value,
+        severity=problem.severity.value,
+        status=problem.status.value,
+        goal_state=problem.goal_state,
+        constraints=problem.constraints,
+        affected_components=problem.affected_components,
+        success_criteria=problem.success_criteria,
+        risk_level=problem.risk_level,
+        risk_factors=problem.risk_factors,
+        created_at=problem.created_at,
+        updated_at=problem.updated_at,
+        source=problem.source,
+    )
+
+
+@router.get(
+    "/problems",
+    response_model=ProblemListResponse,
+    tags=["Problem-Solver"],
+)
+async def list_problems(
+    status_filter: Optional[str] = None,
+    type_filter: Optional[str] = None,
+) -> ProblemListResponse:
+    """
+    Alle Probleme auflisten.
+    
+    Unterstützt optionale Filter nach Status und Typ.
+    
+    Args:
+        status_filter: Filter nach Status (intake, diagnosis, planning, etc.)
+        type_filter: Filter nach Typ (bug, performance, security, etc.)
+    
+    Returns:
+        ProblemListResponse mit Liste von Problemen
+    """
+    manager = _get_problem_manager()
+    
+    # Filter konvertieren
+    status_enum = None
+    type_enum = None
+    
+    if status_filter:
+        try:
+            from problem.models import ProblemStatus
+            status_enum = ProblemStatus(status_filter)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status: {status_filter}",
+            )
+    
+    if type_filter:
+        try:
+            from problem.models import ProblemType
+            type_enum = ProblemType(type_filter)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid type: {type_filter}",
+            )
+    
+    # Probleme laden
+    problems = manager.list_problems(
+        status_filter=status_enum,
+        type_filter=type_enum,
+    )
+    
+    # In Response konvertieren
+    problem_responses = [
+        ProblemResponse(
+            id=p.id,
+            title=p.title,
+            raw_description=p.raw_description,
+            problem_type=p.problem_type.value,
+            severity=p.severity.value,
+            status=p.status.value,
+            goal_state=p.goal_state,
+            constraints=p.constraints,
+            affected_components=p.affected_components,
+            success_criteria=p.success_criteria,
+            risk_level=p.risk_level,
+            risk_factors=p.risk_factors,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
+            source=p.source,
+        )
+        for p in problems
+    ]
+    
+    return ProblemListResponse(
+        problems=problem_responses,
+        total=len(problems),
+    )
+
+
+@router.get(
+    "/problems/{problem_id}",
+    response_model=ProblemResponse,
+    tags=["Problem-Solver"],
+)
+async def get_problem(problem_id: str) -> ProblemResponse:
+    """
+    Problem-Details abrufen.
+    
+    Args:
+        problem_id: ID des Problems
+    
+    Returns:
+        ProblemResponse mit Problem-Details
+    
+    Raises:
+        HTTPException: Wenn Problem nicht gefunden
+    """
+    manager = _get_problem_manager()
+    
+    problem = manager.get_problem(problem_id)
+    if not problem:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Problem '{problem_id}' not found",
+        )
+    
+    return ProblemResponse(
+        id=problem.id,
+        title=problem.title,
+        raw_description=problem.raw_description,
+        problem_type=problem.problem_type.value,
+        severity=problem.severity.value,
+        status=problem.status.value,
+        goal_state=problem.goal_state,
+        constraints=problem.constraints,
+        affected_components=problem.affected_components,
+        success_criteria=problem.success_criteria,
+        risk_level=problem.risk_level,
+        risk_factors=problem.risk_factors,
+        created_at=problem.created_at,
+        updated_at=problem.updated_at,
+        source=problem.source,
+    )
+
+
+@router.post(
+    "/problems/{problem_id}/classify",
+    response_model=ClassificationResultResponse,
+    tags=["Problem-Solver"],
+)
+async def classify_problem(problem_id: str) -> ClassificationResultResponse:
+    """
+    Problem klassifizieren.
+    
+    Führt detaillierte Klassifikation des Problems durch und
+    aktualisiert das Problem mit den Ergebnissen.
+    
+    Args:
+        problem_id: ID des zu klassifizierenden Problems
+    
+    Returns:
+        ClassificationResultResponse mit Klassifikations-Ergebnis
+    
+    Raises:
+        HTTPException: Wenn Problem nicht gefunden
+    """
+    manager = _get_problem_manager()
+    
+    try:
+        result = manager.classify_problem(problem_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    
+    # Alternative Klassifikationen formatieren
+    alternatives = [
+        {
+            "problem_type": alt["problem_type"],
+            "confidence": alt["confidence"],
+        }
+        for alt in result.alternatives
+    ]
+    
+    return ClassificationResultResponse(
+        problem_id=problem_id,
+        problem_type=result.problem_type.value,
+        confidence=result.confidence,
+        keywords_found=result.keywords_found,
+        affected_components=result.affected_components,
+        recommended_actions=result.recommended_actions,
+        alternatives=alternatives,
+    )
+
+
+@router.patch(
+    "/problems/{problem_id}",
+    response_model=ProblemResponse,
+    tags=["Problem-Solver"],
+)
+async def update_problem(
+    problem_id: str,
+    request: ProblemUpdateRequest,
+) -> ProblemResponse:
+    """
+    Problem aktualisieren.
+    
+    Aktualisiert einzelne Felder eines Problems.
+    
+    Args:
+        problem_id: ID des Problems
+        request: ProblemUpdateRequest mit zu aktualisierenden Feldern
+    
+    Returns:
+        ProblemResponse mit aktualisiertem Problem
+    
+    Raises:
+        HTTPException: Wenn Problem nicht gefunden
+    """
+    manager = _get_problem_manager()
+    
+    # Updates vorbereiten
+    updates = request.model_dump(exclude_unset=True)
+    
+    try:
+        problem = manager.update_problem(problem_id, updates)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    
+    if not problem:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Problem '{problem_id}' not found",
+        )
+    
+    return ProblemResponse(
+        id=problem.id,
+        title=problem.title,
+        raw_description=problem.raw_description,
+        problem_type=problem.problem_type.value,
+        severity=problem.severity.value,
+        status=problem.status.value,
+        goal_state=problem.goal_state,
+        constraints=problem.constraints,
+        affected_components=problem.affected_components,
+        success_criteria=problem.success_criteria,
+        risk_level=problem.risk_level,
+        risk_factors=problem.risk_factors,
+        created_at=problem.created_at,
+        updated_at=problem.updated_at,
+        source=problem.source,
+    )
+
+
+@router.delete(
+    "/problems/{problem_id}",
+    response_model=ProblemDeleteResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["Problem-Solver"],
+)
+async def delete_problem(problem_id: str) -> ProblemDeleteResponse:
+    """
+    Problem löschen.
+    
+    Löscht ein ProblemCase permanent.
+    
+    Args:
+        problem_id: ID des zu löschenden Problems
+    
+    Returns:
+        ProblemDeleteResponse mit Status
+    
+    Raises:
+        HTTPException: Wenn Problem nicht gefunden
+    """
+    manager = _get_problem_manager()
+    
+    if manager.delete_problem(problem_id):
+        return ProblemDeleteResponse(
+            success=True,
+            problem_id=problem_id,
+            message="Problem deleted successfully",
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Problem '{problem_id}' not found",
+        )
+
+
+@router.get(
+    "/problems/stats",
+    response_model=ProblemStatisticsResponse,
+    tags=["Problem-Solver"],
+)
+async def get_problem_statistics() -> ProblemStatisticsResponse:
+    """
+    Problem-Statistiken abrufen.
+    
+    Returns aggregierte Statistiken über alle Probleme.
+    
+    Returns:
+        ProblemStatisticsResponse mit Statistiken
+    """
+    manager = _get_problem_manager()
+    stats = manager.get_statistics()
+    
+    return ProblemStatisticsResponse(
+        total_problems=stats["total_problems"],
+        by_type=stats["by_type"],
+        by_status=stats["by_status"],
+        oldest_problem=stats["oldest_problem"],
+        newest_problem=stats["newest_problem"],
+    )
 
 
 # Error handler for GlitchHunter exceptions (registered on app in server.py)

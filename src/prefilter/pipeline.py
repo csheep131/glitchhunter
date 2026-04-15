@@ -61,6 +61,8 @@ class SemgrepResult:
 
     findings: List[SemgrepFinding] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
+    files_scanned: int = 0
+    rules_applied: int = 0
 
 
 @dataclass
@@ -118,7 +120,7 @@ class PreFilterResult:
             # Alle Findings die nicht als 'security' markiert sind
             return sum(
                 1 for f in self.semgrep_result.findings
-                if f.get('metadata', {}).get('category', 'security') != 'security'
+                if f.metadata.get('category', 'security') != 'security'
             )
         return 0
 
@@ -249,22 +251,30 @@ class PreFilterPipeline:
         try:
             all_findings = []
             all_errors = []
+            total_files_scanned = 0
+            total_rules_applied = 0
 
             # Run security scan
             if run_security:
                 security_result = self.semgrep_runner.run_security_scan(self.repo_path)
                 all_findings.extend(security_result.findings)
                 all_errors.extend(security_result.errors)
+                total_files_scanned = max(total_files_scanned, security_result.files_scanned)
+                total_rules_applied += security_result.rules_applied
 
             # Run correctness scan
             if run_correctness:
                 correctness_result = self.semgrep_runner.run_correctness_scan(self.repo_path)
                 all_findings.extend(correctness_result.findings)
                 all_errors.extend(correctness_result.errors)
+                total_files_scanned = max(total_files_scanned, correctness_result.files_scanned)
+                total_rules_applied += correctness_result.rules_applied
 
             return SemgrepResult(
                 findings=all_findings,
                 errors=all_errors,
+                files_scanned=total_files_scanned,
+                rules_applied=total_rules_applied,
             )
 
         except Exception as e:

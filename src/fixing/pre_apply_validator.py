@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.fixing.semantic_diff import SemanticDiff, SemanticDiffValidator
+from fixing.semantic_diff import SemanticDiff, SemanticDiffValidator
 
 logger = logging.getLogger(__name__)
 

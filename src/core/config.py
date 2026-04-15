@@ -207,6 +207,10 @@ class Config:
         """
         if config_path is None:
             config_path = DEFAULT_CONFIG_PATH
+        
+        # Ensure config_path is a Path object
+        if isinstance(config_path, str):
+            config_path = Path(config_path)
 
         logger.info(f"Loading configuration from {config_path}")
 

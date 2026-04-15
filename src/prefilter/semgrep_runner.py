@@ -249,13 +249,13 @@ class SemgrepRunner:
         cmd.extend(["--config", "p/owasp-top-ten"])
         logger.debug("Including OWASP Top 10 2025 rules")
 
-        # Add API Security rules
-        cmd.extend(["--config", "p/api-security"])
-        logger.debug("Including API Security Top 10 rules")
+        # Add Python security rules
+        cmd.extend(["--config", "p/python"])
+        logger.debug("Including Python security rules")
 
-        # Add JWT security rules
-        cmd.extend(["--config", "p/jwt"])
-        logger.debug("Including JWT security rules")
+        # Add Supply Chain security
+        cmd.extend(["--config", "p/supply-chain"])
+        logger.debug("Including Supply Chain security rules")
 
         # Add custom rules
         if self.rules_path and self.rules_path.exists():
@@ -624,11 +624,15 @@ class SemgrepRunner:
             )
             findings.append(finding)
 
-        # Count scanned files
-        files_scanned = len(set(f.file_path for f in findings))
+        # Count scanned files from paths data
+        paths_data = data.get("paths", {})
+        scanned_paths = paths_data.get("scanned", [])
+        files_scanned = len(scanned_paths) if scanned_paths else len(set(f.file_path for f in findings))
 
-        # Count unique rules
-        rules_applied = len(set(f.rule_id for f in findings))
+        # Count rules from time data (engine stats)
+        time_data = data.get("time", {})
+        rules_data = time_data.get("rules", [])
+        rules_applied = len(rules_data) if rules_data else len(set(f.rule_id for f in findings))
 
         errors = []
         for error in data.get("errors", []):
