@@ -451,7 +451,7 @@ class StateMachine:
                     ]
                     logger.info(f"SocratiCode provided {len(context)} semantic context fragments")
                 except Exception as e:
-                    logger.debug(f"SocratiCode MCP nicht verfügbar (läuft nicht auf {url}): {e}")
+                    logger.debug(f"SocratiCode MCP nicht verfügbar: {e}")
 
             state["current_state"] = "ingestion"
             state["metadata"]["ingestion_complete"] = True

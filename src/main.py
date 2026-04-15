@@ -6,12 +6,70 @@ Entry point for CLI and API server.
 """
 
 import argparse
+import atexit
 import logging
+import os
+import signal
+import subprocess
 import sys
 from pathlib import Path
 
 # Ensure src/ is importable
 sys.path.insert(0, str(Path(__file__).parent))
+
+# Global list of child processes to clean up
+_child_processes = []
+
+def _cleanup_child_processes():
+    """Beende alle gestarteten Child-Prozesse ordentlich."""
+    global _child_processes
+    
+    if not _child_processes:
+        return
+    
+    logging.info(f"🧹 Cleaning up {len(_child_processes)} child process(es)...")
+    
+    for proc in _child_processes:
+        try:
+            if proc.poll() is None:  # Noch laufend
+                logging.debug(f"  Terminating PID {proc.pid}...")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=5)
+                    logging.debug(f"  ✓ PID {proc.pid} terminated gracefully")
+                except subprocess.TimeoutExpired:
+                    logging.debug(f"  ⚠ PID {proc.pid} didn't terminate, killing...")
+                    proc.kill()
+        except Exception as e:
+            logging.debug(f"Failed to terminate child process: {e}")
+    
+    _child_processes.clear()
+    logging.info("✅ Cleanup complete")
+
+def _signal_handler(signum, frame):
+    """Signal-Handler für SIGTERM und SIGINT."""
+    sig_name = signal.Signals(signum).name
+    logging.info(f"📶 Received {sig_name}, cleaning up...")
+    _cleanup_child_processes()
+    sys.exit(128 + signum)
+
+# Register signal handlers
+signal.signal(signal.SIGTERM, _signal_handler)
+signal.signal(signal.SIGINT, _signal_handler)
+
+# Register atexit handler for cleanup on normal exit
+atexit.register(_cleanup_child_processes)
+
+# Monkey-patch subprocess.Popen to track child processes
+original_popen_init = subprocess.Popen.__init__
+
+def _patched_popen_init(self, *args, **kwargs):
+    """Wrapper um subprocess.Popen um Child-Prozesse zu tracken."""
+    result = original_popen_init(self, *args, **kwargs)
+    _child_processes.append(self)
+    return result
+
+subprocess.Popen.__init__ = _patched_popen_init
 
 
 def cmd_analyze(args: argparse.Namespace) -> int:
