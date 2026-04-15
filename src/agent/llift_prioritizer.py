@@ -472,15 +472,27 @@ ANTWORT (JSON):
 """
 
         try:
-            response = self._engine.generate(
-                prompt=prompt,
+            # InferenceEngine hat chat_simple statt generate
+            response_text = self._engine.chat_simple(
                 system_prompt="Du bist ein Code-Analyse-Experte. Antworte im JSON-Format.",
+                user_message=prompt,
+                temperature=0.1,
             )
 
             # JSON parsen
             import json
+            import re
 
-            content = response.content.strip()
+            # Robusteres JSON-Parsing
+            content = response_text.strip()
+            
+            # Versuch 1: Extract from markdown code block
+            if "```json" in content:
+                match = re.search(r'```json\s*(\{.*?\})\s*```', content, re.DOTALL)
+                if match:
+                    content = match.group(1)
+            
+            # Versuch 2: Extract first JSON object
             start = content.find("{")
             end = content.rfind("}") + 1
 

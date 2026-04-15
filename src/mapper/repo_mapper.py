@@ -82,6 +82,7 @@ class RepositoryMapper:
 
     Uses Tree-sitter for AST parsing and NetworkX for graph representation.
     Provides methods for dependency analysis and call graph construction.
+    Supports incremental scanning with cache persistence.
 
     Attributes:
         repo_path: Path to the repository
@@ -95,15 +96,31 @@ class RepositoryMapper:
         >>> graph = mapper.symbol_graph
     """
 
-    def __init__(self, repo_path: Path) -> None:
+    def __init__(
+        self,
+        repo_path: Path,
+        persist_path: Optional[Path] = None,
+        auto_persist: bool = True,
+    ) -> None:
         """
         Initialize repository mapper.
 
         Args:
             repo_path: Path to the repository
+            persist_path: Optional path for symbol graph persistence
+            auto_persist: If True, enable auto-save on shutdown
         """
         self.repo_path = repo_path
-        self.symbol_graph = SymbolGraph()
+        self.persist_path = persist_path
+        self.auto_persist = auto_persist
+
+        # Initialize symbol graph with persistence
+        self.symbol_graph = SymbolGraph(
+            repo_path=str(repo_path),
+            persist_path=str(persist_path) if persist_path else None,
+            auto_persist=auto_persist,
+        )
+
         self.languages: Set[str] = set()
         self._parsers: Dict[str, Any] = {}
         self._parser_cache: Dict[str, Any] = {}
@@ -203,18 +220,32 @@ class RepositoryMapper:
 
         logger.info(f"✅ Parsing complete: {symbols_parsed} symbols extracted")
 
-    def build_graph(self) -> SymbolGraph:
+    def build_graph(self, incremental: bool = True) -> SymbolGraph:
         """
         Build symbol graph for the repository.
 
         Parses all files and extracts symbols with their relationships.
+        Supports incremental scanning with cache.
+
+        Args:
+            incremental: If True, only parse changed files when cache is valid
 
         Returns:
             Built SymbolGraph
         """
-        logger.info("🕸️  Building symbol graph (relationships between symbols)...")
+        # Try to use cache for incremental scan
+        if incremental and self._can_use_cache():
+            logger.info("✅ Using cached symbol graph (incremental scan)")
+            # Only parse changed files
+            changed_files = self.scan_changed_files()
+            if changed_files:
+                logger.info(f"   └─ Parsing {len(changed_files)} changed file(s)...")
+                self._parse_files(changed_files)
+            return self.symbol_graph
 
-        # Parse all files first
+        logger.info("🕸️  Building symbol graph (full scan)...")
+
+        # Parse all files
         self.parse_all_files()
 
         # Extract edges (relationships) between symbols
@@ -232,6 +263,59 @@ class RepositoryMapper:
         )
 
         return self.symbol_graph
+
+    def _can_use_cache(self) -> bool:
+        """
+        Prüft ob Cache verwendet werden kann.
+
+        Returns:
+            True if cache exists and is valid
+        """
+        if not self.symbol_graph.persist_path:
+            return False
+
+        # Check if persist file exists
+        pickle_path = (
+            self.symbol_graph.persist_path.with_suffix(".pkl")
+            if self.symbol_graph.persist_path.suffix != ".pkl"
+            else self.symbol_graph.persist_path
+        )
+
+        if not pickle_path.exists():
+            logger.debug(f"Cache file not found: {pickle_path}")
+            return False
+
+        # Try to load - will validate hash internally
+        return self.symbol_graph.load_pickle(str(pickle_path))
+
+    def _parse_files(self, file_paths: List[str]) -> None:
+        """
+        Parse specific files and update symbol graph.
+
+        Args:
+            file_paths: List of file paths to parse
+        """
+        symbols_parsed = 0
+        for file_path_str in file_paths:
+            file_path = Path(file_path_str)
+            if not file_path.is_absolute():
+                file_path = self.repo_path / file_path_str
+
+            if self.ignore_manager.should_ignore(file_path):
+                continue
+
+            try:
+                language = self.get_file_language(file_path)
+                if language == "unknown":
+                    continue
+
+                symbols = self.parse_file(file_path)
+                symbols_parsed += len(symbols)
+                logger.debug(f"  ✓ {file_path.name}: {len(symbols)} symbols")
+            except Exception as e:
+                logger.warning(f"Failed to parse {file_path}: {e}")
+
+        logger.debug(f"Incremental parse complete: {symbols_parsed} symbols")
 
     def get_file_language(self, file_path: Path) -> str:
         """
@@ -1225,6 +1309,68 @@ class RepositoryMapper:
             "file_count": self.symbol_graph.get_file_count(),
             "graph_stats": self.symbol_graph.get_stats(),
         }
+
+    def scan_changed_files(self) -> List[str]:
+        """
+        Returns list of changed files since last commit (via git).
+
+        Returns:
+            List of changed file paths relative to repo root
+        """
+        import subprocess
+
+        try:
+            # Check if git repository
+            git_dir = self.repo_path / ".git"
+            if not git_dir.exists():
+                logger.debug("Not a git repository, skipping change detection")
+                return []
+
+            # Get changed files from last commit
+            result = subprocess.run(
+                ["git", "diff", "--name-only", "HEAD~1"],
+                cwd=self.repo_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            changed_files = [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
+            logger.debug(f"Detected {len(changed_files)} changed file(s) via git")
+            return changed_files
+
+        except subprocess.CalledProcessError as e:
+            logger.debug(f"Git diff failed: {e.stderr.strip() if e.stderr else str(e)}")
+            return []
+        except Exception as e:
+            logger.debug(f"Change detection failed: {e}")
+            return []
+
+    def invalidate_cache(self) -> None:
+        """
+        Invalidate and remove cached symbol graph.
+
+        Forces full rebuild on next build_graph() call.
+        """
+        if self.symbol_graph.persist_path:
+            try:
+                pickle_path = (
+                    self.symbol_graph.persist_path.with_suffix(".pkl")
+                    if self.symbol_graph.persist_path.suffix != ".pkl"
+                    else self.symbol_graph.persist_path
+                )
+                json_path = self.symbol_graph.persist_path.with_suffix(".json")
+
+                if pickle_path.exists():
+                    pickle_path.unlink()
+                    logger.info(f"Cache invalidated: {pickle_path}")
+
+                if json_path.exists():
+                    json_path.unlink()
+                    logger.info(f"Cache invalidated: {json_path}")
+
+            except Exception as e:
+                logger.warning(f"Failed to invalidate cache: {e}")
 
     def clear(self) -> None:
         """Clear the symbol graph."""

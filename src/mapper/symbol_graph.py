@@ -3,11 +3,17 @@ Symbol graph for GlitchHunter.
 
 Represents code symbols and their relationships using NetworkX directed graphs.
 Provides comprehensive symbol tracking, edge relationships, and graph operations.
+Supports persistence via Pickle/JSON and incremental scanning with cache invalidation.
 """
 
+import atexit
+import hashlib
 import json
 import logging
+import pickle
+import subprocess
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -137,13 +143,43 @@ class SymbolGraph:
         >>> ["main"]
     """
 
-    def __init__(self) -> None:
-        """Initialize symbol graph."""
+    def __init__(
+        self,
+        repo_path: Optional[str] = None,
+        persist_path: Optional[str] = None,
+        auto_persist: bool = True,
+    ) -> None:
+        """
+        Initialize symbol graph.
+
+        Args:
+            repo_path: Optional path to repository for hash-based cache validation
+            persist_path: Optional path for persistence (Pickle/JSON)
+            auto_persist: If True, register atexit handler for auto-save
+        """
         self._graph: nx.DiGraph = nx.DiGraph()
         self._symbols: Dict[str, SymbolNode] = {}
         self._file_to_symbols: Dict[str, Set[str]] = {}
 
-        logger.debug("SymbolGraph initialized")
+        self.repo_path = Path(repo_path) if repo_path else None
+        self.persist_path = Path(persist_path) if persist_path else None
+        self._cache_hash: Optional[str] = None
+
+        # Compute repo hash if repo_path provided
+        if self.repo_path:
+            self._cache_hash = self._compute_repo_hash()
+
+        # Auto-load from cache on startup
+        if self.persist_path and self.persist_path.exists():
+            self._load_from_cache()
+
+        # Register auto-save on shutdown
+        if auto_persist and self.persist_path:
+            atexit.register(self._auto_save)
+
+        logger.debug(
+            f"SymbolGraph initialized (repo={self.repo_path}, persist={self.persist_path})"
+        )
 
     def add_symbol(
         self,
@@ -454,6 +490,189 @@ class SymbolGraph:
             json.dump(data, f, indent=2)
 
         logger.info(f"SymbolGraph saved to {path}")
+
+    def save_pickle(self, path: str) -> None:
+        """
+        Save graph to pickle file (faster than JSON).
+
+        Args:
+            path: File path to save to
+        """
+        file_path = Path(path)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        data = {
+            "symbols": [symbol.to_dict() for symbol in self._symbols.values()],
+            "edges": [
+                {
+                    "from_symbol": self._symbols[source].name if source in self._symbols else "",
+                    "to_symbol": self._symbols[target].name if target in self._symbols else "",
+                    "edge_type": data.get("edge_type", "unknown"),
+                    "metadata": {k: v for k, v in data.items() if k != "edge_type"},
+                }
+                for source, target, data in self._graph.edges(data=True)
+            ],
+            "metadata": {
+                "repo_path": str(self.repo_path) if self.repo_path else None,
+                "cached_at": datetime.utcnow().isoformat(),
+                "repo_hash": self._cache_hash,
+            },
+        }
+
+        with open(file_path, "wb") as f:
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        logger.info(f"SymbolGraph persisted (Pickle): {path}")
+
+    def load_pickle(self, path: str) -> bool:
+        """
+        Load graph from pickle file.
+
+        Args:
+            path: File path to load from
+
+        Returns:
+            True if cache valid and loaded, False if cache invalid or not found
+        """
+        file_path = Path(path)
+        if not file_path.exists():
+            logger.debug(f"Pickle cache not found: {path}")
+            return False
+
+        try:
+            with open(file_path, "rb") as f:
+                data = pickle.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to load pickle cache: {e}")
+            return False
+
+        # Cache-Validität prüfen
+        current_hash = self._compute_repo_hash() if self.repo_path else None
+        cached_hash = data.get("metadata", {}).get("repo_hash")
+
+        if current_hash and cached_hash and current_hash != cached_hash:
+            logger.info("Cache invalid (repo changed), rebuilding...")
+            return False
+
+        # Cache laden
+        self.clear()
+
+        for symbol_data in data.get("symbols", []):
+            symbol = SymbolNode.from_dict(symbol_data)
+            symbol_id = self._make_symbol_id(symbol.name, symbol.file_path, symbol.line_start)
+            self._symbols[symbol_id] = symbol
+            self._graph.add_node(
+                symbol_id,
+                name=symbol.name,
+                type=symbol.type,
+                file_path=symbol.file_path,
+                line_start=symbol.line_start,
+                line_end=symbol.line_end,
+                **symbol.metadata,
+            )
+            if symbol.file_path not in self._file_to_symbols:
+                self._file_to_symbols[symbol.file_path] = set()
+            self._file_to_symbols[symbol.file_path].add(symbol_id)
+
+        for edge_data in data.get("edges", []):
+            edge = SymbolEdge.from_dict(edge_data)
+            from_id = self._find_symbol_id_by_name(edge.from_symbol)
+            to_id = self._find_symbol_id_by_name(edge.to_symbol)
+
+            if from_id and to_id:
+                self._graph.add_edge(
+                    from_id,
+                    to_id,
+                    edge_type=edge.edge_type,
+                    **edge.metadata,
+                )
+
+        logger.info(f"SymbolGraph loaded from cache: {path}")
+        return True
+
+    def _load_from_cache(self) -> None:
+        """Load graph from persist_path if available and valid."""
+        if not self.persist_path:
+            return
+
+        # Try Pickle first (faster)
+        pickle_path = self.persist_path.with_suffix(".pkl") if self.persist_path.suffix != ".pkl" else self.persist_path
+        if pickle_path.exists():
+            if self.load_pickle(str(pickle_path)):
+                return
+
+        # Fallback to JSON
+        json_path = self.persist_path.with_suffix(".json") if self.persist_path.suffix != ".json" else self.persist_path
+        if json_path.exists():
+            try:
+                loaded = SymbolGraph.load_json(str(json_path))
+                self._graph = loaded._graph
+                self._symbols = loaded._symbols
+                self._file_to_symbols = loaded._file_to_symbols
+                logger.info(f"SymbolGraph loaded from JSON cache: {json_path}")
+            except Exception as e:
+                logger.warning(f"Failed to load JSON cache: {e}")
+
+    def _auto_save(self) -> None:
+        """Speichert Graph automatisch beim Shutdown."""
+        if not self.persist_path:
+            return
+
+        try:
+            self.persist_path.parent.mkdir(parents=True, exist_ok=True)
+            self.save_pickle(str(self.persist_path))
+            logger.info(f"SymbolGraph auto-saved: {self.persist_path}")
+        except Exception as e:
+            logger.warning(f"Auto-save failed: {e}")
+
+    def _compute_repo_hash(self) -> str:
+        """
+        Berechnet Hash aller Source-Files für Cache-Validation.
+
+        Returns:
+            SHA256 Hash (first 16 chars) of all source files
+        """
+        if not self.repo_path or not self.repo_path.exists():
+            return ""
+
+        hasher = hashlib.sha256()
+        source_extensions = ["*.py", "*.js", "*.ts", "*.tsx", "*.rs", "*.go", "*.java", "*.jsx"]
+
+        for ext in source_extensions:
+            for file_path in self.repo_path.rglob(ext):
+                if self._should_ignore(file_path):
+                    continue
+                try:
+                    with open(file_path, "rb") as f:
+                        hasher.update(f.read())
+                except Exception:
+                    pass
+
+        return hasher.hexdigest()[:16]
+
+    def _should_ignore(self, file_path: Path) -> bool:
+        """
+        Prüft ob File ignoriert werden soll.
+
+        Args:
+            file_path: Path to check
+
+        Returns:
+            True if file should be ignored
+        """
+        ignore_patterns = [
+            ".git",
+            "node_modules",
+            "__pycache__",
+            ".venv",
+            "venv",
+            "dist",
+            "build",
+            ".pytest_cache",
+            ".socratiCode",
+            "htmlcov",
+        ]
+        return any(p in str(file_path) for p in ignore_patterns)
 
     @classmethod
     def load_json(cls, path: str) -> "SymbolGraph":

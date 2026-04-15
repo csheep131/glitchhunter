@@ -128,6 +128,43 @@ mapper:
     enabled: true
     output_format: "xml"
 
+# Cache Konfiguration für Symbol Graph
+cache:
+  enabled: true
+  symbol_graph_persist: true
+  persist_path: ".glitchhunter/cache/symbol_graph.pkl"
+  auto_invalidate: true  # Bei Repo-Änderung
+  auto_persist: true     # Auto-save beim Shutdown
+  redis:
+    enabled: false
+    host: "localhost"
+    port: 6379
+    ttl_days: 7
+    key_prefix: "symbol_graph"
+
+# Embedding und Vector-DB Konfiguration
+embeddings:
+  model: "sentence-transformers/all-MiniLM-L6-v2"
+  cache_dir: ".glitchhunter/embeddings"
+  device: null  # null = auto, oder "cpu", "cuda"
+
+learned_rules:
+  vector_db: "qdrant"  # "qdrant" oder "chromadb"
+  collection: "learned_rules"
+  auto_learn: true  # Nach jedem Fix automatisch lernen
+  min_similarity: 0.7  # Minimum Similarity für Rule-Matching
+  top_k: 5  # Standard Anzahl Similarity-Ergebnisse
+  
+  qdrant:
+    host: "localhost"
+    port: 6379
+    https: false
+    timeout: 30
+    
+  chromadb:
+    persist_dir: ".glitchhunter/chroma"
+    anonymized_telemetry: false
+
 # API Konfiguration
 api:
   host: "0.0.0.0"
@@ -190,6 +227,27 @@ features:
   evidence_contract: true
   evidence_gate_enabled: true
   min_evidence_score: 0.5  # Minimum score for auto-fix
+
+# Escalation Level 4 Draft PR Configuration
+escalation:
+  level_4_draft_pr:
+    enabled: true
+    github:
+      token_env: "GITHUB_TOKEN"
+      owner_env: "REPO_OWNER"
+      repo_env: "REPO_NAME"
+      # Optional: Remote-URL zum Klonen (falls kein lokales Repo)
+      # remote_url: "https://github.com/owner/repo.git"
+    gitlab:
+      url: "https://gitlab.com"
+      token_env: "GITLAB_TOKEN"
+      project_id_env: "GITLAB_PROJECT_ID"
+      # Optional: Remote-URL zum Klonen (falls kein lokales Repo)
+      # remote_url: "https://gitlab.com/owner/repo.git"
+    auto_push: true
+    draft: true
+    # Optional: Default Branch für PRs (default: main)
+    # base_branch: "main"
 
 # Evidence Gate Konfiguration (NEW)
 evidence_gate:

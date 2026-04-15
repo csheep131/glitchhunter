@@ -1,14 +1,24 @@
 """
 Human Report Generator für GlitchHunter Escalation Level 4.
 
-Generiert detaillierte Reports für menschliche Review.
+Generiert detaillierte Reports für menschliche Review und erstellt Draft-PRs.
+
+Features:
+- Detaillierte Bug-Beschreibung
+- Liste versuchter Fixes
+- Evidenz-Zusammenstellung
+- Handlungsempfehlungen
+- Draft-PR Erstellung (GitHub/GitLab)
 """
 
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from escalation.pr_creator import BasePRCreator, GitHubPRCreator, GitLabMRCreator, PRResult
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +76,7 @@ class HumanReportGenerator:
     - Liste versuchter Fixes
     - Evidenz-Zusammenstellung
     - Handlungsempfehlungen
-    - Draft-PR Erstellung
+    - Draft-PR Erstellung (GitHub/GitLab)
 
     Usage:
         generator = HumanReportGenerator()
@@ -76,17 +86,124 @@ class HumanReportGenerator:
     def __init__(
         self,
         output_dir: str = "reports/escalation",
+        config: Optional[Any] = None,
+        local_repo_path: Optional[str] = None,
     ) -> None:
         """
         Initialisiert Human Report Generator.
 
         Args:
             output_dir: Ausgabe-Verzeichnis.
+            config: Config-Objekt mit escalation.level_4_draft_pr.
+            local_repo_path: Pfad zum lokalen Repository für PR-Erstellung.
         """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.config = config
+        self.local_repo_path = local_repo_path
+        self.pr_creator: Optional[BasePRCreator] = None
+
+        # PR Creator initialisieren wenn enabled
+        if config and self._is_pr_creation_enabled(config):
+            self.pr_creator = self._initialize_pr_creator(config, local_repo_path)
 
         logger.debug(f"HumanReportGenerator initialisiert: {self.output_dir}")
+        if self.pr_creator:
+            logger.info(f"PR-Erstellung aktiviert: {self.pr_creator.__class__.__name__}")
+        else:
+            logger.debug("PR-Erstellung deaktiviert oder nicht konfiguriert")
+
+    def _is_pr_creation_enabled(self, config: Any) -> bool:
+        """
+        Prüft ob PR-Erstellung in Config aktiviert ist.
+
+        Args:
+            config: Config-Objekt
+
+        Returns:
+            True wenn aktiviert
+        """
+        if not hasattr(config, "escalation"):
+            return False
+
+        if not hasattr(config.escalation, "level_4_draft_pr"):
+            return False
+
+        return bool(config.escalation.level_4_draft_pr.enabled)
+
+    def _initialize_pr_creator(
+        self,
+        config: Any,
+        local_repo_path: Optional[str],
+    ) -> Optional[BasePRCreator]:
+        """
+        Initialisiert PR-Creator aus Config.
+
+        Args:
+            config: Config-Objekt
+            local_repo_path: Lokaler Repository-Pfad
+
+        Returns:
+            PR-Creator Instanz oder None
+        """
+        pr_config = config.escalation.level_4_draft_pr
+
+        # GitHub Priorität
+        if hasattr(pr_config, "github") and pr_config.github.token_env:
+            token = os.getenv(pr_config.github.token_env)
+            owner = os.getenv(pr_config.github.owner_env)
+            repo = os.getenv(pr_config.github.repo_env)
+
+            if not all([token, owner, repo]):
+                logger.warning(
+                    f"GitHub Umgebungsvariablen unvollständig. "
+                    f"Token: {bool(token)}, Owner: {bool(owner)}, Repo: {bool(repo)}"
+                )
+                return None
+
+            remote_url = getattr(pr_config.github, "remote_url", None)
+
+            logger.info(f"Initialisiere GitHub PR-Creator für {owner}/{repo}")
+            return GitHubPRCreator(
+                token=token,
+                owner=owner,
+                repo_name=repo,
+                local_repo_path=local_repo_path,
+                remote_url=remote_url,
+            )
+
+        # GitLab Fallback
+        if hasattr(pr_config, "gitlab") and pr_config.gitlab.token_env:
+            url = getattr(pr_config.gitlab, "url", "https://gitlab.com")
+            token = os.getenv(pr_config.gitlab.token_env)
+            project_id_str = os.getenv(pr_config.gitlab.project_id_env)
+
+            if not all([token, project_id_str]):
+                logger.warning(
+                    f"GitLab Umgebungsvariablen unvollständig. "
+                    f"Token: {bool(token)}, Project ID: {bool(project_id_str)}"
+                )
+                return None
+
+            try:
+                project_id = int(project_id_str)
+            except ValueError:
+                logger.error(f"GitLab Project ID ungültig: {project_id_str}")
+                return None
+
+            remote_url = getattr(pr_config.gitlab, "remote_url", None)
+
+            logger.info(f"Initialisiere GitLab MR-Creator für Projekt {project_id}")
+            return GitLabMRCreator(
+                url=url,
+                token=token,
+                project_id=project_id,
+                local_repo_path=local_repo_path,
+                remote_url=remote_url,
+            )
+
+        logger.warning("Keine gültige GitHub oder GitLab Konfiguration gefunden")
+        return None
 
     def generate(
         self,
@@ -135,23 +252,62 @@ class HumanReportGenerator:
         self,
         bug: Dict[str, Any],
         fix_suggestions: List[str],
+        patch_diff: Optional[str] = None,
+        branch_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Generiert Draft-PR Information.
+        Generiert echten Draft-PR über konfigurierten PR-Creator.
 
         Args:
-            bug: Bug.
-            fix_suggestions: Fix-Vorschläge.
+            bug: Bug-Informationen
+            fix_suggestions: Fix-Vorschläge
+            patch_diff: Unified Diff des Patches (optional)
+            branch_name: Branch-Name (optional)
 
         Returns:
-            PR-Information.
+            Dict mit PR-Informationen und Status
         """
-        return {
-            "title": f"Fix: {bug.get('bug_type', 'unknown')} in {bug.get('file_path', '')}",
-            "body": self._generate_pr_body(bug, fix_suggestions),
-            "labels": ["bug", "automated-fix", "needs-review"],
-            "draft": True,
-        }
+        # Prüfen ob PR-Creator verfügbar
+        if not self.pr_creator:
+            logger.warning("PR-Erstellung nicht aktiviert oder nicht konfiguriert")
+            return {
+                "success": False,
+                "error": "PR creation not enabled or not configured",
+                "platform": None,
+            }
+
+        # Patch aus Bug extrahieren falls nicht angegeben
+        if patch_diff is None:
+            patch_diff = bug.get("patch_diff", "")
+
+        if not patch_diff.strip():
+            logger.warning("Kein Patch für PR-Erstellung verfügbar")
+            return {
+                "success": False,
+                "error": "No patch diff available",
+                "platform": self.pr_creator.__class__.__name__,
+            }
+
+        logger.info(f"Erstelle Draft-PR für Bug {bug.get('bug_id', 'unknown')}")
+
+        try:
+            # PR erstellen über Creator
+            result: PRResult = self.pr_creator.create_draft_pr(
+                bug=bug,
+                fix_suggestions=fix_suggestions,
+                patch_diff=patch_diff,
+                branch_name=branch_name,
+            )
+
+            return result.to_dict()
+
+        except Exception as e:
+            logger.error(f"Draft-PR Erstellung fehlgeschlagen: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "platform": getattr(self.pr_creator, "platform", "unknown"),
+            }
 
     def _generate_title(self, bug: Dict[str, Any], escalation_level: int) -> str:
         """Generiert Titel."""

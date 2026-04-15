@@ -1,0 +1,45 @@
+rules:
+- id: glitchhunter/learned/fix_0
+  pattern: $NUMBEROT x = $NUMBERone
+  message: Init variable
+  severity: LOW
+  languages:
+  - python
+  metadata:
+    pattern_type: fix
+    learned_from: patch
+    occurrences: 1
+    fix_success_rate: 0.0
+- id: glitchhunter/learned/fix_1
+  pattern: x = '$STRI$NUMBERG'
+  message: Init variable
+  severity: LOW
+  languages:
+  - python
+  metadata:
+    pattern_type: fix
+    learned_from: patch
+    occurrences: 1
+    fix_success_rate: 0.0
+- id: glitchhunter/learned/fix_2
+  pattern: $NUMBEROT arr[$NUMBER]
+  message: Check bounds
+  severity: HIGH
+  languages:
+  - python
+  metadata:
+    pattern_type: fix
+    learned_from: patch
+    occurrences: 1
+    fix_success_rate: 0.0
+- id: glitchhunter/learned/fix_3
+  pattern: arr[$NUMBER] if arr else $NUMBERone
+  message: Check bounds
+  severity: HIGH
+  languages:
+  - python
+  metadata:
+    pattern_type: fix
+    learned_from: patch
+    occurrences: 1
+    fix_success_rate: 0.0

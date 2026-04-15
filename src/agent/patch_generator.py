@@ -29,7 +29,7 @@ class PatchResult:
     
     issue: dict
     original_code: str
-    patched_code: str
+    patched_code: str = ""  # Default leer, wird später gesetzt
     patch_diff: str = ""
     explanation: str = ""
     confidence: float = 0.0

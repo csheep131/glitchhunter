@@ -1,0 +1,76 @@
+{
+  "repository": "/home/schaf/projects/glitchhunter",
+  "loc": 3753696,
+  "timestamp": "2026-04-15T18:23:06.479263",
+  "benchmarks": [
+    {
+      "name": "Symbol-Graph Build",
+      "metrics": {
+        "build_time": {
+          "value": "0.41",
+          "unit": "seconds",
+          "timestamp": "2026-04-15T18:22:52.096026"
+        },
+        "symbol_count": {
+          "value": 0,
+          "unit": "symbols",
+          "timestamp": "2026-04-15T18:22:52.096040"
+        },
+        "edge_count": {
+          "value": 0,
+          "unit": "edges",
+          "timestamp": "2026-04-15T18:22:52.096052"
+        },
+        "file_count": {
+          "value": 0,
+          "unit": "files",
+          "timestamp": "2026-04-15T18:22:52.096058"
+        }
+      },
+      "duration_seconds": 0.515089
+    },
+    {
+      "name": "Incremental Scan",
+      "metrics": {
+        "incremental_time": {
+          "value": "0.40",
+          "unit": "seconds",
+          "timestamp": "2026-04-15T18:22:52.900467"
+        },
+        "cache_hit": {
+          "value": true,
+          "unit": "boolean",
+          "timestamp": "2026-04-15T18:22:52.900473"
+        }
+      },
+      "duration_seconds": 0.804359
+    },
+    {
+      "name": "Prefilter Pipeline",
+      "metrics": {
+        "prefilter_time": {
+          "value": "13.57",
+          "unit": "seconds",
+          "timestamp": "2026-04-15T18:23:06.478936"
+        },
+        "candidates": {
+          "value": 68,
+          "unit": "candidates",
+          "timestamp": "2026-04-15T18:23:06.478950"
+        },
+        "security_issues": {
+          "value": 0,
+          "unit": "issues",
+          "timestamp": "2026-04-15T18:23:06.478954"
+        },
+        "correctness_issues": {
+          "value": 0,
+          "unit": "issues",
+          "timestamp": "2026-04-15T18:23:06.478959"
+        }
+      },
+      "duration_seconds": 13.57844
+    }
+  ],
+  "total_duration_seconds": 14.897888
+}

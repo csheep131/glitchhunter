@@ -1,0 +1,34 @@
+rules:
+- id: glitchhunter/learned/vulnerability_0
+  pattern: $NUMBEROT query = f"$STRI$NUMBERG"
+  message: Use parameterized queries to prevent SQL injection
+  severity: CRITICAL
+  languages:
+  - python
+  metadata:
+    pattern_type: vulnerability
+    learned_from: patch
+    occurrences: 1
+    fix_success_rate: 0.0
+- id: glitchhunter/learned/vulnerability_1
+  pattern: query = "$STRI$NUMBERG"
+  message: Use parameterized queries to prevent SQL injection
+  severity: CRITICAL
+  languages:
+  - python
+  metadata:
+    pattern_type: vulnerability
+    learned_from: patch
+    occurrences: 1
+    fix_success_rate: 0.0
+- id: glitchhunter/learned/vulnerability_2
+  pattern: cursor.FU$NUMBERC(query, (user_id,))
+  message: Use parameterized queries to prevent SQL injection
+  severity: CRITICAL
+  languages:
+  - python
+  metadata:
+    pattern_type: vulnerability
+    learned_from: patch
+    occurrences: 1
+    fix_success_rate: 0.0

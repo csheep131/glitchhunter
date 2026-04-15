@@ -12,7 +12,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from fixing.pre_apply_validator import Gate1Result
+from src.fixing.pre_apply_validator import Gate1Result
 
 logger = logging.getLogger(__name__)
 
