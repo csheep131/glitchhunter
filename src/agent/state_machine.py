@@ -980,7 +980,9 @@ class StateMachine:
             return "error"
 
         patches = state.get("patches", [])
-        verified = state.get("verified_patches", [])
+        # Count verified patches based on the 'verified' flag in each patch dict
+        verified_count = sum(1 for p in patches if p.get("verified", False))
+        total_patches = len(patches)
 
         # Check patch loop iteration limit
         patch_iterations = state.get("metadata", {}).get("patch_iterations", 0)
@@ -988,19 +990,19 @@ class StateMachine:
             logger.warning(f"Max patch iterations reached ({patch_iterations}), terminating to finalizer")
             return "finalizer"
 
-        # Continue looping if we have unverified patches and haven't hit limit
-        if len(verified) < len(patches) and len(patches) < 10 and patch_iterations < 3:
-            new_iter = patch_iterations + 1
-            state["metadata"]["patch_iterations"] = new_iter
-            logger.info(f"Retrying patch loop... (Iteration {new_iter}/3)")
-            return "patch_loop"
-
-        # Escalate if no patches were verified but we have patches
-        if len(verified) == 0 and len(patches) > 0:
-            logger.info("No patches verified. Escalating to hypothesis phase.")
+        # If we have no verified patches, check hypothesis iteration limit
+        if verified_count == 0 and total_patches > 0:
+            iterations = state.get("metadata", {}).get("hypothesis_iterations", 0)
+            if iterations >= 5:
+                logger.warning(f"Max hypothesis iterations reached ({iterations}), terminating to finalizer")
+                return "finalizer"
+            # If we have no verified patches, escalate (don't continue patch loop)
+            new_iter = iterations + 1
+            state["metadata"]["hypothesis_iterations"] = new_iter
+            logger.info(f"No patches verified. Escalating... (Iteration {new_iter}/5)")
             return "escalate"
 
-        logger.info("✅ Patch loop complete. Moving to finalizer.")
+        logger.info(f"✅ Patch loop complete. {verified_count}/{total_patches} patches verified. Moving to finalizer.")
         return "finalizer"
 
     def _route_from_finalizer(

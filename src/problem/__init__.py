@@ -27,6 +27,13 @@ from .decomposition import (
     Decomposition,
     DecompositionEngine,
 )
+from .solution_path import (
+    SolutionPath,
+    SolutionType,
+    RiskLevel,
+    SolutionPlan,
+    SolutionPlanner,
+)
 
 __all__ = [
     "ProblemCase",
@@ -50,4 +57,10 @@ __all__ = [
     "DependencyType",
     "Decomposition",
     "DecompositionEngine",
+    # Solution Path Planning
+    "SolutionPath",
+    "SolutionType",
+    "RiskLevel",
+    "SolutionPlan",
+    "SolutionPlanner",
 ]

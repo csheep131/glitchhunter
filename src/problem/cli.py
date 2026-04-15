@@ -440,6 +440,102 @@ def cmd_problem_decompose(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_problem_plan(args: argparse.Namespace) -> int:
+    """
+    `glitchhunter problem plan` - Lösungsplan erstellen.
+    """
+    from core.config import load_config
+
+    config = load_config()
+    repo_path = Path(config.repository.path)
+    manager = ProblemManager(repo_path=repo_path)
+
+    # Lösungsplan erstellen
+    try:
+        plan = manager.create_solution_plan(
+            problem_id=args.problem_id,
+            use_decomposition=not args.skip_decomposition,
+        )
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+    # Ausgabe
+    print(f"\n✅ Lösungsplan erstellt für {args.problem_id}")
+    print(f"\n{'='*60}")
+    print(f"Strategie: {plan.overall_strategy}")
+    print(f"\n{'='*60}")
+
+    # Lösungspfade pro Teilproblem
+    for sp_id, paths in plan.solution_paths.items():
+        print(f"\n📍 Teilproblem: {sp_id}")
+        print("-" * 40)
+
+        # Nach Score sortiert
+        sorted_paths = sorted(paths, key=lambda p: p.overall_score(), reverse=True)
+
+        for i, path in enumerate(sorted_paths, 1):
+            selected = "✅" if plan.selected_paths.get(sp_id) == path.id else "  "
+            score = path.overall_score()
+
+            print(f"\n{selected} {i}. {path.title} (Score: {score:.1f})")
+            print(f"   Typ: {path.solution_type.value}")
+            print(f"   Wirksamkeit: {'★' * path.effectiveness}{'☆' * (10-path.effectiveness)}")
+            print(f"   Aufwand: {path.effort}/10 ({path.estimated_hours or '?'}h)")
+            print(f"   Risiko: {path.risk.value}")
+
+            if path.implementation_steps:
+                print(f"   Schritte:")
+                for step in path.implementation_steps[:3]:
+                    print(f"     - {step}")
+
+        # Besten Pfad anzeigen
+        best = plan.get_best_path(sp_id)
+        if best and plan.selected_paths.get(sp_id) != best.id:
+            print(f"\n   💡 Empfehlung: {best.title} (Score: {best.overall_score():.1f})")
+
+    # Statistik
+    stats = plan.get_statistics()
+    print(f"\n{'='*60}")
+    print(f"Statistik:")
+    print(f"  Teilprobleme: {stats['total_subproblems']}")
+    print(f"  Lösungspfade gesamt: {stats['total_paths']}")
+    print(f"  Ausgewählt: {stats['selected_count']} ({stats['completion_percentage']:.0f}%)")
+    print(f"  Quick Wins: {stats['quick_wins']}")
+    print(f" 高风险ige Pfade: {stats['high_risk_paths']}")
+
+    if 'avg_overall_score' in stats:
+        print(f"  Ø Score: {stats['avg_overall_score']:.1f}/10")
+
+    print(f"\n{'='*60}")
+    return 0
+
+
+def cmd_problem_select_path(args: argparse.Namespace) -> int:
+    """
+    `glitchhunter problem select` - Lösungsweg auswählen.
+    """
+    from core.config import load_config
+
+    config = load_config()
+    repo_path = Path(config.repository.path)
+    manager = ProblemManager(repo_path=repo_path)
+
+    # Lösungsweg auswählen
+    success = manager.select_solution_path(
+        problem_id=args.problem_id,
+        subproblem_id=args.subproblem_id,
+        path_id=args.path_id,
+    )
+
+    if success:
+        print(f"✅ Lösungsweg ausgewählt für {args.subproblem_id}")
+        return 0
+    else:
+        print(f"❌ Fehler: Problem/Plan nicht gefunden", file=sys.stderr)
+        return 1
+
+
 def setup_problem_parser(subparsers) -> None:
     """
     Registriert Problem-Solver Commands im CLI-Parser.
@@ -583,3 +679,38 @@ def setup_problem_parser(subparsers) -> None:
         help="ID of the problem to decompose",
     )
     decompose_parser.set_defaults(func=cmd_problem_decompose)
+
+    # plan
+    plan_parser = problem_subparsers.add_parser(
+        "plan",
+        help="Create solution plan for problem",
+    )
+    plan_parser.add_argument(
+        "problem_id",
+        help="ID of the problem",
+    )
+    plan_parser.add_argument(
+        "--skip-decomposition",
+        action="store_true",
+        help="Skip using decomposition",
+    )
+    plan_parser.set_defaults(func=cmd_problem_plan)
+
+    # select
+    select_parser = problem_subparsers.add_parser(
+        "select",
+        help="Select solution path for subproblem",
+    )
+    select_parser.add_argument(
+        "problem_id",
+        help="ID of the problem",
+    )
+    select_parser.add_argument(
+        "subproblem_id",
+        help="ID of the subproblem",
+    )
+    select_parser.add_argument(
+        "path_id",
+        help="ID of the solution path",
+    )
+    select_parser.set_defaults(func=cmd_problem_select_path)

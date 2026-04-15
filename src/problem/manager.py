@@ -16,6 +16,7 @@ from .intake import ProblemIntake
 from .classifier import ProblemClassifier, ClassificationResult
 from .diagnosis import Diagnosis, DiagnosisEngine, CauseType
 from .decomposition import Decomposition, DecompositionEngine
+from .solution_path import SolutionPlan, SolutionPlanner
 
 logger = logging.getLogger(__name__)
 
@@ -473,11 +474,11 @@ class ProblemManager:
     ) -> Path:
         """
         Speichert Decomposition persistently.
-        
+
         Args:
             problem_id: ID des Problems
             decomposition: Zu speichernde Decomposition
-        
+
         Returns:
             Pfad zur gespeicherten Datei
         """
@@ -486,3 +487,125 @@ class ProblemManager:
             json.dumps(decomposition.to_dict(), indent=2, ensure_ascii=False)
         )
         return decomp_file
+
+    def create_solution_plan(
+        self,
+        problem_id: str,
+        use_decomposition: bool = True,
+    ) -> SolutionPlan:
+        """
+        Erstellt Lösungsplan für Problem.
+
+        Args:
+            problem_id: ID des Problems
+            use_decomposition: Ob Decomposition verwendet werden soll
+
+        Returns:
+            SolutionPlan-Objekt
+
+        Raises:
+            ValueError: Wenn Problem nicht gefunden
+        """
+        problem = self.get_problem(problem_id)
+        if not problem:
+            raise ValueError(f"Problem {problem_id} not found")
+
+        logger.info(f"Creating solution plan for problem: {problem_id}")
+
+        # SubProblem-IDs sammeln
+        decomposition = None
+        if use_decomposition:
+            decomposition = self.get_decomposition(problem_id)
+            if decomposition:
+                subproblem_ids = [sp.id for sp in decomposition.subproblems]
+            else:
+                # Fallback: Leere Liste
+                subproblem_ids = []
+        else:
+            subproblem_ids = []
+
+        # Plan erstellen
+        planner = SolutionPlanner(repo_path=self.repo_path)
+        plan = planner.create_solution_plan(
+            problem_id=problem_id,
+            subproblem_ids=subproblem_ids,
+            decomposition_id=decomposition.problem_id if decomposition else None,
+        )
+
+        # Plan speichern
+        self._save_solution_plan(problem_id, plan)
+
+        logger.info(
+            f"Solution plan created: {len(plan.solution_paths)} subproblems, "
+            f"{sum(len(p) for p in plan.solution_paths.values())} paths"
+        )
+        return plan
+
+    def get_solution_plan(self, problem_id: str) -> Optional[SolutionPlan]:
+        """
+        Lädt SolutionPlan für ein Problem.
+
+        Args:
+            problem_id: ID des Problems
+
+        Returns:
+            SolutionPlan oder None
+        """
+        plan_file = self.problems_dir / f"{problem_id}_solution_plan.json"
+
+        if plan_file.exists():
+            try:
+                data = json.loads(plan_file.read_text())
+                return SolutionPlan.from_dict(data)
+            except Exception as e:
+                logger.error(f"Failed to load solution plan: {e}")
+                return None
+
+        return None
+
+    def select_solution_path(
+        self,
+        problem_id: str,
+        subproblem_id: str,
+        path_id: str,
+    ) -> bool:
+        """
+        Wählt Lösungsweg für Teilproblem aus.
+
+        Args:
+            problem_id: ID des Problems
+            subproblem_id: ID des Teilproblems
+            path_id: ID des Lösungswegs
+
+        Returns:
+            True wenn erfolgreich
+        """
+        plan = self.get_solution_plan(problem_id)
+        if not plan:
+            return False
+
+        success = plan.select_path(subproblem_id, path_id)
+        if success:
+            self._save_solution_plan(problem_id, plan)
+        return success
+
+    def _save_solution_plan(
+        self,
+        problem_id: str,
+        plan: SolutionPlan,
+    ) -> Path:
+        """
+        Speichert SolutionPlan persistently.
+
+        Args:
+            problem_id: ID des Problems
+            plan: Zu speichernder SolutionPlan
+
+        Returns:
+            Pfad zur gespeicherten Datei
+        """
+        plan_file = self.problems_dir / f"{problem_id}_solution_plan.json"
+        plan_file.write_text(
+            json.dumps(plan.to_dict(), indent=2, ensure_ascii=False)
+        )
+        return plan_file

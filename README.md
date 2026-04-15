@@ -133,6 +133,82 @@ huggingface-cli download Qwen/Qwen2.5-Coder-7B-Instruct-GGUF \
 ./scripts/download_models.sh
 ```
 
+## LLM Server Setup
+
+GlitchHunter nutzt llama.cpp als Backend für lokale LLM-Inferenz. Nachfolgend die empfohlene Konfiguration für verschiedene Hardware-Stacks.
+
+### Schnellstart (Empfohlene Konfiguration)
+
+```bash
+# Umgebungsvariablen
+export MODEL_ANALYZER="/offline_llm/models/Qwen3.5-9B-UncensoredHauhauCS-Aggressive-Q4_K_M.gguf"
+export CHAT_TEMPLATE="/path/to/qwen3.5-chat-template.jinja2"
+
+# Server starten (Kleiner Stack - TurboQuant optimiert)
+TURBO_LAYER_ADAPTIVE=1 ./bin/llama-server \
+    -m "$MODEL_ANALYZER" \
+    -ctk turbo3 \
+    -ctv turbo3 \
+    -c 131072 \
+    -ngl 50 \
+    -fa on \
+    -t 8 \
+    -b 512 \
+    --host 0.0.0.0 \
+    --port 8080 \
+    --temp 0.3 \
+    --top-p 0.9 \
+    --min-p 0.1 \
+    --repeat-penalty 1.2 \
+    --reasoning off \
+    --reasoning-format none \
+    --chat-template-file "$CHAT_TEMPLATE"
+```
+
+### Parameter Erklärung
+
+| Parameter | Wert | Beschreibung |
+|-----------|------|--------------|
+| `-m` | Model-Pfad | Pfad zur GGUF-Datei |
+| `-ctk/-ctv` | turbo3 | KV-Cache Quantisierung (TurboQuant) |
+| `-c` | 131072 | Kontextgröße (128k Tokens) |
+| `-ngl` | 50 | GPU-Layer (50 von ~49 für 9B) |
+| `-fa` | on | Flash-Attention aktiviert |
+| `-t` | 8 | CPU-Threads für nicht-GPU-Layer |
+| `-b` | 512 | Batch-Size für Inferenz |
+| `--temp` | 0.3 | Sampling-Temperatur (konservativ) |
+| `--top-p` | 0.9 | Nucleus-Sampling |
+| `--min-p` | 0.1 | Minimale Wahrscheinlichkeit |
+| `--repeat-penalty` | 1.2 | Wiederholungsstrafe |
+| `--reasoning` | off | Reasoning-Modus deaktiviert |
+
+### Empfohlenes Modell: Qwen3.5-9B
+
+| Spezifikation | Details |
+|---------------|---------|
+| **Modell** | Qwen3.5-9B-UncensoredHauhauCS-Aggressive-Q4_K_M |
+| **Größe** | 9B Parameter |
+| **Quantisierung** | Q4_K_M (4-bit, komprimiert) |
+| **VRAM** | ~6-7 GB |
+| **Kontext** | 128k Tokens |
+| **Use Case** | Code-Analyse, Bug-Fixing |
+
+### Umgebungsvariablen
+
+```bash
+# TurboQuant Layer-Adaptive Modus
+export TURBO_LAYER_ADAPTIVE=1
+
+# Modell-Pfade
+export MODEL_ANALYZER="/offline_llm/models/Qwen3.5-9B-UncensoredHauhauCS-Aggressive-Q4_K_M.gguf"
+export CHAT_TEMPLATE="/path/to/chat-template.jinja2"
+
+# Optional: GPU-Einstellungen überschreiben
+export CUDA_VISIBLE_DEVICES=0
+```
+
+---
+
 ## Hardware Stacks
 
 ### Stack A: Consumer GPU (RTX 3060/4060)
