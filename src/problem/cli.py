@@ -444,9 +444,9 @@ def cmd_problem_plan(args: argparse.Namespace) -> int:
     """
     `glitchhunter problem plan` - Lösungsplan erstellen.
     """
-    from core.config import load_config
+    from core.config import Config
 
-    config = load_config()
+    config = Config.load()
     repo_path = Path(config.repository.path)
     manager = ProblemManager(repo_path=repo_path)
 
@@ -515,9 +515,9 @@ def cmd_problem_select_path(args: argparse.Namespace) -> int:
     """
     `glitchhunter problem select` - Lösungsweg auswählen.
     """
-    from core.config import load_config
+    from core.config import Config
 
-    config = load_config()
+    config = Config.load()
     repo_path = Path(config.repository.path)
     manager = ProblemManager(repo_path=repo_path)
 

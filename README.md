@@ -113,6 +113,7 @@ GlitchHunter works best with these locally-run models. All are available via Hug
 
 | Model | Size | Quantization | VRAM | Use Case | Download |
 |-------|------|--------------|------|----------|----------|
+| **Qwen3.5-9B-Aggressive** ⭐ | 9B | Q4_K_M | ~6GB | **Empfohlen** - Code-Analyse & Bug-Fixing | [HF Link](https://huggingface.co/HauhauCS/Qwen3.5-9B-UncensoredHauhauCS-Aggressive-GGUF) |
 | **Qwen2.5-Coder-7B** | 7B | Q4_K_M | ~4.5GB | Best overall balance | [HF Link](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF) |
 | **Qwen2.5-Coder-14B** | 14B | Q4_K_M | ~8.5GB | Better code understanding | [HF Link](https://huggingface.co/Qwen/Qwen2.5-Coder-14B-Instruct-GGUF) |
 | **DeepSeek-Coder-V2-Lite** | 16B | Q4_K_M | ~9GB | Excellent for security | [HF Link](https://huggingface.co/deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct-GGUF) |
@@ -209,46 +210,22 @@ export CUDA_VISIBLE_DEVICES=0
 
 ---
 
-## Hardware Stacks
+## Hardware Stacks (Kurzübersicht)
 
-### Stack A: Consumer GPU (RTX 3060/4060)
-| Feature | Specification |
-|---------|--------------|
-| VRAM | 8-12GB |
-| Acceleration | TurboQuant + Flash-Attention |
-| Context | 64k-128k (Layer-Adaptive) |
-| Ensemble | 2 models parallel |
-| Scan Speed | ~5 min for 10k LOC |
+| Stack | VRAM | Context | Modus | Scan Speed |
+|-------|------|---------|-------|------------|
+| **A** (RTX 3060/4060) | 8-12GB | 64k-128k | TurboQuant Hybrid | ~5 min/10k LOC |
+| **B** (RTX 3090/4090) | 24GB | 100k-200k | Full GPU | ~2 min/10k LOC |
+| **C** (CPU-Only) | - | 4k-8k | llama.cpp Q4_K_M | ~10 min/10k LOC |
 
-### Stack B: Professional GPU (RTX 3090/4090)
-| Feature | Specification |
-|---------|--------------|
-| VRAM | 24GB |
-| Acceleration | Native 16-bit / FP8 |
-| Context | 100k-200k |
-| Ensemble | 3+ models parallel |
-| Scan Speed | ~2 min for 10k LOC |
-
-### Stack C: CPU-Only (Any Machine)
-| Feature | Specification |
-|---------|--------------|
-| CPU | 4+ cores recommended |
-| RAM | 16GB+ |
-| Models | GGUF Q4_K_M quantized |
-| Context | 4k-8k |
-| Scan Speed | ~10 min for 10k LOC |
-
-**TurboQuant Smart Fallback:** One backend, three modes - automatically selected:
-- **Full GPU** (8GB+ VRAM): All layers on GPU (`n_gpu_layers=-1`)
-- **Hybrid** (4-8GB VRAM): Layer-adaptive GPU/CPU balance
-- **CPU-Only** (No GPU): All threads on CPU (`n_gpu_layers=0`)
+**TurboQuant Smart Fallback** wählt automatisch: `Full GPU` → `Hybrid` → `CPU-Only`
 
 ```bash
-# CPU-only mode (no GPU required!)
-./scripts/run_auto.sh --cpu-only scan /path/to/repo
-
-# Automatic detection (selects Full/Hybrid/CPU)
+# Automatische Erkennung
 ./scripts/run_auto.sh scan /path/to/repo
+
+# CPU-only erzwingen
+./scripts/run_auto.sh --cpu-only scan /path/to/repo
 ```
 
 ## TurboQuant Configuration
