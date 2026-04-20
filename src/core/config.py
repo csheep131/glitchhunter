@@ -98,11 +98,24 @@ class LoggingConfig:
         Returns:
             Logging level (e.g., "DEBUG", "INFO")
         """
-        if stack_name == "stack_a" and "level" in self.stack_a:
-            return self.stack_a["level"]
-        if stack_name == "stack_b" and "level" in self.stack_b:
-            return self.stack_b["level"]
+        if stack_name == "stack_a":
+            return self.stack_a.get("level", self.level)
+        elif stack_name == "stack_b":
+            return self.stack_b.get("level", self.level)
         return self.level
+
+
+@dataclass
+class AILoggingConfig:
+    """Configuration for AI communication logging."""
+
+    enabled: bool = False
+    directory: str = "ai_logs"
+    max_files: int = 100
+    log_requests: bool = True
+    log_responses: bool = True
+    log_prompts: bool = True
+    log_full_response: bool = True
 
 
 @dataclass
@@ -154,6 +167,32 @@ class MCPConfig:
 
 
 @dataclass
+class RemoteInferenceConfig:
+    """Configuration for remote Llama inference."""
+
+    enabled: bool = False
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    timeout: int = 120
+    fallback_to_local: bool = True
+    health_check_interval: int = 30
+    model_mapping: Dict[str, str] = field(default_factory=dict)
+    
+    @property
+    def is_enabled(self) -> bool:
+        """Check if remote inference is enabled."""
+        return self.enabled and self.base_url is not None
+    
+    def get_server_url(self) -> Optional[str]:
+        """Get the remote server URL."""
+        return self.base_url if self.is_enabled else None
+    
+    def get_model_name(self, local_alias: str) -> str:
+        """Get remote model name for a local alias."""
+        return self.model_mapping.get(local_alias, local_alias)
+
+
+@dataclass
 class ModelDownloadsConfig:
     """Configuration for model downloads."""
 
@@ -178,6 +217,7 @@ class Config:
         features: Feature toggle configuration
         paths: File path configuration
         model_downloads: Model downloads configuration
+        remote_inference: Remote Llama inference configuration
     """
 
     hardware: Dict[str, HardwareStackConfig]
@@ -186,10 +226,12 @@ class Config:
     mapper: MapperConfig
     api: APIConfig
     logging: LoggingConfig
+    ai_logging: AILoggingConfig
     features: FeaturesConfig
     paths: PathsConfig
     model_downloads: ModelDownloadsConfig
     mcp_integration: MCPConfig
+    remote_inference: RemoteInferenceConfig = field(default_factory=RemoteInferenceConfig)
 
     @classmethod
     def load(cls, config_path: Optional[Path] = None) -> "Config":
@@ -302,6 +344,18 @@ class Config:
                 stack_b=logging_data.get("stack_b", {}),
             )
 
+            # Parse AI logging config
+            ai_logging_data = data.get("ai_logging", {})
+            ai_logging_config = AILoggingConfig(
+                enabled=ai_logging_data.get("enabled", False),
+                directory=ai_logging_data.get("directory", "ai_logs"),
+                max_files=ai_logging_data.get("max_files", 100),
+                log_requests=ai_logging_data.get("log_requests", True),
+                log_responses=ai_logging_data.get("log_responses", True),
+                log_prompts=ai_logging_data.get("log_prompts", True),
+                log_full_response=ai_logging_data.get("log_full_response", True),
+            )
+
             # Parse features config
             features_data = data.get("features", {})
             features = FeaturesConfig(
@@ -344,6 +398,18 @@ class Config:
                 auto_start=mcp_data.get("auto_start", True),
             )
 
+            # Parse remote inference config
+            remote_data = data.get("remote_inference", {})
+            remote_inference = RemoteInferenceConfig(
+                enabled=remote_data.get("enabled", False),
+                base_url=remote_data.get("base_url"),
+                api_key=remote_data.get("api_key"),
+                timeout=remote_data.get("timeout", 120),
+                fallback_to_local=remote_data.get("fallback_to_local", True),
+                health_check_interval=remote_data.get("health_check_interval", 30),
+                model_mapping=remote_data.get("model_mapping", {}),
+            )
+
             return cls(
                 hardware=hardware,
                 prefilter=prefilter,
@@ -351,10 +417,12 @@ class Config:
                 mapper=mapper,
                 api=api,
                 logging=logging_config,
+                ai_logging=ai_logging_config,
                 features=features,
                 paths=paths,
                 model_downloads=model_downloads_config,
                 mcp_integration=mcp_integration,
+                remote_inference=remote_inference,
             )
 
         except TypeError as e:
@@ -507,6 +575,15 @@ class Config:
                 "server": self.mcp_integration.server,
                 "socraticode": self.mcp_integration.socraticode,
                 "auto_start": self.mcp_integration.auto_start,
+            },
+            "remote_inference": {
+                "enabled": self.remote_inference.enabled,
+                "base_url": self.remote_inference.base_url,
+                "api_key": self.remote_inference.api_key,
+                "timeout": self.remote_inference.timeout,
+                "fallback_to_local": self.remote_inference.fallback_to_local,
+                "health_check_interval": self.remote_inference.health_check_interval,
+                "model_mapping": self.remote_inference.model_mapping,
             },
         }
 

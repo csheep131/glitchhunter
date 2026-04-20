@@ -145,6 +145,81 @@ function check_llama_cpp() {
     fi
 }
 
+function ensure_server_built() {
+    LLAMA_TOOLS_PATH="/home/schaf/tools/llama-cpp-turboquant-cuda"
+    if [ ! -f "$LLAMA_TOOLS_PATH/build/bin/llama-server" ]; then
+        echo "[ERR] llama-server not found at $LLAMA_TOOLS_PATH/build/bin/llama-server"
+        echo "      Build it first: cd $LLAMA_TOOLS_PATH && cmake -B build && cmake --build build"
+        exit 1
+    fi
+}
+
+function wait_for_server() {
+    echo -n "Waiting for LLM server..."
+    for i in {1..60}; do
+        if curl -s http://localhost:8080/health > /dev/null 2>&1; then
+            echo " Ready!"
+            return 0
+        fi
+        sleep 1
+        echo -n "."
+    done
+    echo " Timeout!"
+    echo "[ERR] Server failed to start. Check logs/llama_server.log"
+    exit 1
+}
+
+function start_server_bg() {
+    # Prüfe ob Server schon läuft
+    if curl -s http://localhost:8080/health > /dev/null 2>&1; then
+        echo "[OK] LLM Server already running on port 8080"
+        return 0
+    fi
+
+    ensure_server_built
+
+    LLAMA_TOOLS_PATH="/home/schaf/tools/llama-cpp-turboquant-cuda"
+    MODEL_ANALYZER="$HOME/stuff/offline_llm/models/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf"
+    CHAT_TEMPLATE="$PROJECT_DIR/src/inference/templates/qwen_de.jinja"
+
+    if [ ! -f "$MODEL_ANALYZER" ]; then
+        echo "[ERR] Model not found: $MODEL_ANALYZER"
+        exit 1
+    fi
+
+    echo "Starting LLM Server in background..."
+    echo "  Model: Qwen3.5-9B-Aggressive"
+    echo "  Port: 8080"
+
+    cd "$LLAMA_TOOLS_PATH/build"
+    TURBO_LAYER_ADAPTIVE=1 ./bin/llama-server \
+        -m "$MODEL_ANALYZER" \
+        -ctk turbo3 \
+        -ctv turbo3 \
+        -c 131072 \
+        -ngl 50 \
+        -fa on \
+        -t 8 \
+        -b 512 \
+        --host 0.0.0.0 \
+        --port 8080 \
+        --temp 0.3 \
+        --top-p 0.9 \
+        --min-p 0.1 \
+        --repeat-penalty 1.2 \
+        --reasoning off \
+        --reasoning-format none \
+        --chat-template-file "$CHAT_TEMPLATE" \
+        > "$PROJECT_DIR/logs/llama_server.log" 2>&1 &
+
+    SERVER_PID=$!
+    echo "  PID: $SERVER_PID"
+    echo "  Logs: logs/llama_server.log"
+
+    cd "$PROJECT_DIR"
+    wait_for_server
+}
+
 function download_model_if_needed() {
     MODEL_DIR="$HOME/.glitchhunter/models"
     MODEL_FILE="qwen2.5-coder-7b-instruct-q4_k_m.gguf"
@@ -179,6 +254,16 @@ function run_scan() {
     
     # Wichtig: Ins src-Verzeichnis wechseln!
     cd "$PROJECT_DIR/src"
+    
+    # Setze Umgebungsvariablen für Modelle und API-URL
+    export MODEL_API_URL="http://localhost:8080"
+    if [ "$STACK" = "a" ]; then
+        export MODEL_ANALYZER="$HOME/stuff/offline_llm/models/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf"
+        export MODEL_VERIFIER="$HOME/stuff/offline_llm/models/microsoft_Phi-4-mini-instruct-Q4_K_M.gguf"
+    elif [ "$STACK" = "b" ]; then
+        export MODEL_ANALYZER="$PROJECT_DIR/models/qwen3.5-27b-instruct-q4_k_m.gguf"
+        export MODEL_VERIFIER="$PROJECT_DIR/models/deepseek-v3.2-small-q4_k_m.gguf"
+    fi
     
     # Führe Analyse direkt aus (wie run_stack_a.sh)
     python3 -c "
@@ -230,14 +315,17 @@ function main() {
     
     echo ""
     
-    # Prüfe llama.cpp für CPU-Modus
+    # Prüfe llama.cpp für CPU-Modus oder starte Server für GPU
     if [ "$STACK" == "cpu" ]; then
         check_llama_cpp
         download_model_if_needed
+    else
+        # Starte LLM Server automatisch (GPU Stack)
+        start_server_bg
     fi
-    
+
     echo ""
-    
+
     # Führe Scan aus
     run_scan "$TARGET_PATH"
     

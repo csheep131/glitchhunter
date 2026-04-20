@@ -18,6 +18,8 @@ from typing import Optional
 
 from .manager import ProblemManager
 from .models import ProblemStatus, ProblemType
+from .stack_adapter import StackID
+from .validation import ValidationStatus
 
 
 def cmd_problem_intake(args: argparse.Namespace) -> int:
@@ -536,6 +538,198 @@ def cmd_problem_select_path(args: argparse.Namespace) -> int:
         return 1
 
 
+def cmd_problem_stack(args: argparse.Namespace) -> int:
+    """
+    `glitchhunter problem stack` - Stack-Informationen anzeigen.
+    """
+    from core.config import Config
+
+    config = Config.load()
+    # Repository-Pfad ermitteln (fallback zu aktuellem Verzeichnis)
+    repo_path = Path(getattr(config, 'repository', None) and getattr(config.repository, 'path', None) or Path.cwd())
+    manager = ProblemManager(repo_path=repo_path)
+
+    if args.compare:
+        # Stack-Vergleich
+        comparison = manager.compare_stacks(args.capability)
+
+        print(f"\n📊 Stack-Vergleich")
+        print(f"{'='*60}")
+
+        print(f"\n{comparison['stack_a']['name']}:")
+        caps_a = comparison['stack_a']['capabilities']
+        print(f"  Capabilities: {caps_a['supported_capabilities']}/{caps_a['total_capabilities']}")
+        print(f"  Coverage: {caps_a['capability_coverage']:.0f}%")
+
+        print(f"\n{comparison['stack_b']['name']}:")
+        caps_b = comparison['stack_b']['capabilities']
+        print(f"  Capabilities: {caps_b['supported_capabilities']}/{caps_b['total_capabilities']}")
+        print(f"  Coverage: {caps_b['capability_coverage']:.0f}%")
+
+        if 'differences' in comparison:
+            print(f"\nUnterschiede:")
+            for key, diff in comparison['differences'].items():
+                if isinstance(diff, dict) and 'difference' in diff:
+                    print(f"  {key}: {diff['difference']:+.1f}%")
+
+    elif args.recommend:
+        # Empfehlung für Problem
+        recommendation = manager.recommend_stack_for_problem(args.recommend)
+        print(f"\n✅ Empfehlung für {args.recommend}:")
+        print(f"   Stack: {recommendation}")
+
+    elif args.profile:
+        # Spezifisches Profil
+        profile = manager.get_stack_profile(args.profile)
+        if profile:
+            stats = profile.get_statistics()
+            print(f"\n📋 {profile.name}")
+            print(f"{'='*60}")
+            print(f"Beschreibung: {profile.description}")
+            print(f"\nRessourcen:")
+            print(f"  Memory: {stats['resources']['memory_gb']}GB")
+            print(f"  CPU: {stats['resources']['cpu_cores']} Kerne")
+            print(f"  GPU: {stats['resources']['gpu']}")
+            print(f"\nCapabilities:")
+            print(f"  Gesamt: {stats['total_capabilities']}")
+            print(f"  Unterstützt: {stats['supported_capabilities']}")
+            print(f"  Coverage: {stats['capability_coverage']:.0f}%")
+            print(f"\nFeatures: {stats['enabled_features']}/{stats['total_features']}")
+        else:
+            print(f"Stack-Profil nicht gefunden: {args.profile}", file=sys.stderr)
+            return 1
+
+    else:
+        # Übersicht
+        print(f"\n📦 Verfügbare Stacks:")
+        print(f"{'='*60}")
+
+        for stack_id in StackID:
+            if stack_id == StackID.AUTO:
+                continue
+
+            profile = manager.get_stack_profile(stack_id.value)
+            if profile:
+                stats = profile.get_statistics()
+                print(f"\n{stack_id.value}:")
+                print(f"  Name: {profile.name}")
+                print(f"  Capabilities: {stats['supported_capabilities']}/{stats['total_capabilities']}")
+                print(f"  Coverage: {stats['capability_coverage']:.0f}%")
+                print(f"  Features: {stats['enabled_features']}/{stats['total_features']}")
+
+        print(f"\n{'='*60}")
+        print(f"\nCommands:")
+        print(f"  glitchhunter problem stack --compare")
+        print(f"  glitchhunter problem stack --profile stack_a")
+        print(f"  glitchhunter problem stack --recommend <problem_id>")
+
+    return 0
+
+
+def cmd_problem_validate(args: argparse.Namespace) -> int:
+    """
+    `glitchhunter problem validate` - Goal Validation durchführen.
+    
+    Prüft ob die Success Criteria eines Problems erfüllt sind.
+    """
+    from core.config import load_config
+    
+    config = load_config()
+    repo_path = Path(config.repository.path)
+    manager = ProblemManager(repo_path=repo_path)
+    
+    # Validation durchführen
+    try:
+        report = manager.validate_goal(
+            problem_id=args.problem_id,
+            implemented_changes=None,  # Kann aus Datei geladen werden
+        )
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    
+    # Ausgabe
+    print(f"\n✅ Goal Validation für {args.problem_id}")
+    print(f"{'='*60}")
+    print(f"{report.summary}")
+    print(f"\n{'='*60}")
+    
+    # Einzelne Kriterien
+    print(f"\nKriterien:")
+    for i, result in enumerate(report.results, 1):
+        status_icon = {
+            "passed": "✅",
+            "failed": "❌",
+            "partial": "⚠️",
+            "pending": "⏳",
+            "blocked": "🚫",
+        }.get(result.status.value, "❓")
+        
+        print(f"\n{i}. {status_icon} {result.criterion}")
+        if result.description:
+            print(f"   {result.description}")
+        if result.status == ValidationStatus.FAILED:
+            print(f"   Grund: {result.failure_reason}")
+            if result.remediation_steps:
+                print(f"   Nächste Schritte:")
+                for step in result.remediation_steps[:3]:
+                    print(f"     - {step}")
+    
+    # Statistik
+    stats = report.get_statistics()
+    print(f"\n{'='*60}")
+    print(f"Statistik:")
+    print(f"  Bestanden: {stats['passed']}/{stats['total_criteria']} ({stats['completion_percentage']:.0f}%)")
+    print(f"  Fehlgeschlagen: {stats['failed']}")
+    print(f"  Ausstehend: {stats['pending']}")
+    print(f"  Blockiert: {stats['blocked']}")
+    print(f"  Gesamt-Status: {stats['overall_status']}")
+    
+    print(f"\n{'='*60}")
+    return 0
+
+
+def cmd_problem_intent(args: argparse.Namespace) -> int:
+    """
+    `glitchhunter problem intent` - Intent Validation durchführen.
+    
+    Prüft ob das ursprüngliche Problem wirklich gelöst wurde
+    oder nur Symptome behandelt wurden (Scheinlösung).
+    """
+    from core.config import load_config
+    
+    config = load_config()
+    repo_path = Path(config.repository.path)
+    manager = ProblemManager(repo_path=repo_path)
+    
+    # Intent Validation durchführen
+    try:
+        report = manager.validate_intent(
+            problem_id=args.problem_id,
+            solution_description=args.solution or "",
+        )
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    
+    # Ausgabe
+    print(f"\n✅ Intent Validation für {args.problem_id}")
+    print(f"{'='*60}")
+    print(f"Original-Problem: {report.original_problem_description[:100]}...")
+    print(f"\nAnalyse:")
+    print(report.analysis)
+    
+    if report.concerns:
+        print(f"\nBedenken:")
+        for concern in report.concerns:
+            print(f"  {concern}")
+    
+    print(f"\n{'='*60}")
+    print(f"Status: {report.overall_status.value}")
+    print(f"{'='*60}")
+    return 0
+
+
 def setup_problem_parser(subparsers) -> None:
     """
     Registriert Problem-Solver Commands im CLI-Parser.
@@ -714,3 +908,197 @@ def setup_problem_parser(subparsers) -> None:
         help="ID of the solution path",
     )
     select_parser.set_defaults(func=cmd_problem_select_path)
+
+    # stack
+    stack_parser = problem_subparsers.add_parser(
+        "stack",
+        help="Show stack information and recommendations",
+    )
+    stack_parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="Compare both stacks",
+    )
+    stack_parser.add_argument(
+        "--profile",
+        help="Show profile for specific stack",
+    )
+    stack_parser.add_argument(
+        "--recommend",
+        metavar="PROBLEM_ID",
+        help="Recommend stack for problem",
+    )
+    stack_parser.add_argument(
+        "--capability",
+        help="Compare specific capability",
+    )
+    stack_parser.set_defaults(func=cmd_problem_stack)
+
+    # validate
+    validate_parser = problem_subparsers.add_parser(
+        "validate",
+        help="Perform goal validation for problem",
+    )
+    validate_parser.add_argument(
+        "problem_id",
+        help="ID of the problem",
+    )
+    validate_parser.set_defaults(func=cmd_problem_validate)
+
+    # intent
+    intent_parser = problem_subparsers.add_parser(
+        "intent",
+        help="Perform intent validation for problem",
+    )
+    intent_parser.add_argument(
+        "problem_id",
+        help="ID of the problem",
+    )
+    intent_parser.add_argument(
+        "-s", "--solution",
+        help="Description of the implemented solution",
+    )
+    intent_parser.set_defaults(func=cmd_problem_intent)
+
+    # fix
+    fix_parser = problem_subparsers.add_parser(
+        "fix",
+        help="Perform auto-fix for problem",
+    )
+    fix_parser.add_argument(
+        "problem_id",
+        help="ID of the problem",
+    )
+    fix_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Don't apply actual changes",
+    )
+    fix_parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="Skip validation after applying patches",
+    )
+    fix_parser.set_defaults(func=cmd_problem_fix)
+
+    # rollback
+    rollback_parser = problem_subparsers.add_parser(
+        "rollback",
+        help="Rollback auto-fix for problem",
+    )
+    rollback_parser.add_argument(
+        "problem_id",
+        help="ID of the problem",
+    )
+    rollback_parser.add_argument(
+        "-f", "--force",
+        action="store_true",
+        help="Skip confirmation prompt",
+    )
+    rollback_parser.set_defaults(func=cmd_problem_rollback)
+
+
+def cmd_problem_fix(args: argparse.Namespace) -> int:
+    """
+    `glitchhunter problem fix` - Auto-Fix durchführen.
+
+    Führt automatische Patch-Generierung und Anwendung durch
+    basierend auf dem SolutionPlan.
+    """
+    from core.config import Config
+
+    config = Config.load(args.config if hasattr(args, 'config') else None)
+    repo_path = Path(config.repository.path)
+    manager = ProblemManager(repo_path=repo_path)
+
+    # Auto-Fix durchführen
+    try:
+        result = manager.auto_fix(
+            problem_id=args.problem_id,
+            dry_run=args.dry_run,
+            validate=not args.no_validate,
+        )
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+    # Ausgabe
+    print(f"\n✅ Auto-Fix für {args.problem_id}")
+    if args.dry_run:
+        print(f"   (DRY RUN - keine Änderungen angewendet)")
+    print(f"{'='*60}")
+    print(f"{result.summary}")
+    print(f"\n{'='*60}")
+
+    # Einzelne Patches
+    print(f"\nPatches ({len(result.patches)}):")
+    for i, patch in enumerate(result.patches, 1):
+        status_icon = {
+            "completed": "✅",
+            "failed": "❌",
+            "rolled_back": "↩️",
+            "pending": "⏳",
+            "in_progress": "🔵",
+            "blocked": "🚫",
+        }.get(patch.status.value, "❓")
+
+        print(f"\n{i}. {status_icon} {patch.id}")
+        print(f"   File: {patch.file_path}")
+        print(f"   SubProblem: {patch.subproblem_id}")
+
+        if patch.validation_errors:
+            print(f"   Errors: {', '.join(patch.validation_errors)}")
+
+    # Statistik
+    stats = result.get_statistics()
+    print(f"\n{'='*60}")
+    print(f"Statistik:")
+    print(f"  Angewendet: {stats['applied']}/{stats['total_patches']} ({stats['success_rate']:.0f}%)")
+    print(f"  Fehlgeschlagen: {stats['failed']}")
+    print(f"  Rollback: {stats['rolled_back']}")
+    print(f"  Ausstehend: {stats['pending']}")
+    print(f"  Status: {stats['overall_status']}")
+
+    if args.dry_run:
+        print(f"\n💡 Hinweis: Dies war ein Dry-Run.")
+        print(f"   Ohne --dry-run werden die Patches tatsächlich angewendet.")
+
+    print(f"\n{'='*60}")
+    return 0
+
+
+def cmd_problem_rollback(args: argparse.Namespace) -> int:
+    """
+    `glitchhunter problem rollback` - Rollback von Auto-Fix.
+
+    Stellt den Zustand vor der Auto-Fix-Anwendung wieder her
+    mittels Backup-Dateien.
+    """
+    from core.config import Config
+
+    config = Config.load(args.config if hasattr(args, 'config') else None)
+    repo_path = Path(config.repository.path)
+    manager = ProblemManager(repo_path=repo_path)
+
+    # Bestätigung einholen
+    if not args.force:
+        confirm = input(f"Rollback für {args.problem_id} durchführen? [y/N] ")
+        if confirm.lower() != 'y':
+            print("Rollback abgebrochen")
+            return 0
+
+    # Rollback durchführen
+    try:
+        result = manager.rollback_fix(args.problem_id)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+    # Ausgabe
+    print(f"\n✅ Rollback für {args.problem_id}")
+    print(f"{'='*60}")
+    print(f"{result.summary}")
+    print(f"\n{'='*60}")
+    print(f"Status: {result.overall_status.value}")
+    print(f"{'='*60}")
+    return 0

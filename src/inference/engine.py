@@ -5,6 +5,7 @@ Provides chat completion and embedding capabilities using llama-cpp-python.
 """
 
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -71,6 +72,8 @@ class InferenceEngine:
         temperature: float = 0.7,
         max_tokens: int = 2048,
         api_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        timeout: int = 120,
     ) -> None:
         """
         Initialize inference engine.
@@ -80,18 +83,31 @@ class InferenceEngine:
             temperature: Default temperature for generation
             max_tokens: Maximum tokens for generation
             api_url: Optional URL for remote OpenAI-compatible API
+            api_key: Optional API key for authentication
+            timeout: Request timeout in seconds
+
+        Environment Variables:
+            LLAMA_NETWORK_URL: Override api_url (e.g., "http://192.168.1.100:8080")
         """
+        # Environment variable takes precedence
+        env_url = os.getenv("LLAMA_NETWORK_URL")
+        if env_url:
+            api_url = env_url
+            logger.info(f"Using LLAMA_NETWORK_URL from environment: {api_url}")
+
         self.model_name = model_name
         self._model: Optional[Any] = None
         self._temperature = temperature
         self._max_tokens = max_tokens
         self._api_url = api_url
+        self._api_key = api_key
+        self._timeout = timeout
         self._is_loaded = False
         self._is_remote = False
 
         logger.debug(
             f"InferenceEngine initialized for model: {model_name} "
-            f"(remote: {api_url if api_url else 'No'})"
+            f"(remote: {api_url if api_url else 'No'}, timeout: {timeout}s)"
         )
 
     def load_model(self, model_path: Optional[str] = None, **kwargs) -> None:
@@ -112,17 +128,65 @@ class InferenceEngine:
                 model_name=self.model_name
             )
 
+    def load_model_with_fallback(
+        self,
+        model_path: Optional[str] = None,
+        remote_url: Optional[str] = None,
+        **kwargs
+    ) -> bool:
+        """
+        Load model with remote-first strategy and local fallback.
+
+        Args:
+            model_path: Path to GGUF model file (for local fallback)
+            remote_url: Optional override for remote URL
+            **kwargs: Additional arguments
+
+        Returns:
+            True if loaded successfully (remote or local), False otherwise
+        """
+        # Try remote first if configured
+        url_to_use = remote_url or self._api_url
+        
+        if url_to_use:
+            try:
+                logger.info(f"Attempting remote connection to {url_to_use}")
+                self._api_url = url_to_use
+                self._load_remote(**kwargs)
+                return True
+            except Exception as e:
+                logger.warning(f"Remote connection failed: {e}")
+                if not kwargs.get("fallback_to_local", True):
+                    raise
+                logger.info("Falling back to local model...")
+
+        # Fallback to local
+        if model_path:
+            try:
+                self._load_local(model_path, **kwargs)
+                return True
+            except Exception as e:
+                logger.error(f"Local model loading failed: {e}")
+                return False
+
+        return False
+
     def _load_remote(self, **kwargs) -> None:
         """Connect to remote OpenAI-compatible API."""
         try:
             from inference.openai_api import OpenAIAPI
-            
+
             logger.info(f"Connecting to remote LLM server at {self._api_url}")
-            self._model = OpenAIAPI(base_url=self._api_url, **kwargs)
+            self._model = OpenAIAPI(
+                base_url=self._api_url,
+                api_key=self._api_key,
+                timeout=self._timeout,
+                **kwargs
+            )
             self._is_remote = True
             self._is_loaded = True
             logger.info(f"Remote LLM connection established for '{self.model_name}'")
-            
+
         except Exception as e:
             raise InferenceError(
                 f"Failed to connect to remote LLM: {e}",
@@ -445,7 +509,77 @@ class InferenceEngine:
             "model_name": self.model_name,
             "temperature": self._temperature,
             "max_tokens": self._max_tokens,
+            "is_remote": self._is_remote,
+            "api_url": self._api_url if self._is_remote else None,
         }
+
+    async def check_remote_health(self) -> bool:
+        """
+        Check if remote LLM server is healthy.
+
+        Returns:
+            True if server is healthy, False otherwise
+        """
+        if not self._api_url:
+            return False
+
+        try:
+            from inference.openai_api import OpenAIAPI
+
+            api = OpenAIAPI(
+                base_url=self._api_url,
+                api_key=self._api_key,
+                timeout=10
+            )
+            is_healthy = await api.health_check()
+            logger.debug(f"Remote LLM health check: {'OK' if is_healthy else 'UNHEALTHY'}")
+            return is_healthy
+        except Exception as e:
+            logger.warning(f"Remote health check failed: {e}")
+            return False
+
+    def check_remote_health_sync(self) -> bool:
+        """
+        Synchronous health check for remote LLM server.
+
+        Returns:
+            True if server is healthy, False otherwise
+        """
+        if not self._api_url:
+            return False
+
+        try:
+            from inference.openai_api import OpenAIAPI
+
+            api = OpenAIAPI(
+                base_url=self._api_url,
+                api_key=self._api_key,
+                timeout=10
+            )
+            is_healthy = api.health_check_sync()
+            logger.debug(f"Remote LLM health check: {'OK' if is_healthy else 'UNHEALTHY'}")
+            return is_healthy
+        except Exception as e:
+            logger.warning(f"Remote health check failed: {e}")
+            return False
+
+    def is_remote_server_available(self) -> bool:
+        """
+        Check if a remote server is configured.
+
+        Returns:
+            True if remote URL is configured
+        """
+        return self._api_url is not None
+
+    def get_remote_url(self) -> Optional[str]:
+        """
+        Get the configured remote URL.
+
+        Returns:
+            Remote URL or None
+        """
+        return self._api_url
 
     def __enter__(self) -> "InferenceEngine":
         """Context manager entry."""

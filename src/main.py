@@ -83,6 +83,15 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     config = Config.load(args.config)
     setup_logging(config.logging if hasattr(config, "logging") else None)
 
+    # Check for remote inference configuration
+    remote_url = os.getenv("LLAMA_NETWORK_URL")
+    if not remote_url and hasattr(config, "remote_inference"):
+        if config.remote_inference.is_enabled:
+            remote_url = config.remote_inference.get_server_url()
+            os.environ["LLAMA_NETWORK_URL"] = remote_url
+            logger = logging.getLogger(__name__)
+            logger.info(f"Using remote LLM server from config: {remote_url}")
+
     repo_path = Path(args.repository).resolve()
     if not repo_path.exists():
         print(f"ERROR: Repository path not found: {repo_path}")
@@ -91,6 +100,8 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     print(f"GlitchHunter v2.0.0")
     print(f"Target: {repo_path}")
     print(f"Config: {args.config}")
+    if remote_url:
+        print(f"Remote LLM:    {remote_url}")
     print()
 
     from agent.state_machine import GlitchHunterWorkflow

@@ -17,6 +17,24 @@ from .classifier import ProblemClassifier, ClassificationResult
 from .diagnosis import Diagnosis, DiagnosisEngine, CauseType
 from .decomposition import Decomposition, DecompositionEngine
 from .solution_path import SolutionPlan, SolutionPlanner
+from .validation import (
+    GoalValidationReport,
+    IntentValidationReport,
+    GoalValidator,
+    IntentValidator,
+)
+from .stack_adapter import (
+    StackID,
+    StackAdapterManager,
+    StackProfile,
+    create_stack_adapter,
+)
+from .auto_fix import (
+    AutoFixResult,
+    AutoFixEngine,
+    create_auto_fix_engine,
+    FixStatus,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +84,9 @@ class ProblemManager:
         self.intake = ProblemIntake()
         self.classifier = ProblemClassifier(repo_path=repo_path)
         
+        # Stack Adapter initialisieren
+        self.stack_manager = create_stack_adapter(repo_path=repo_path)
+
         # Geladene Problems im Memory-Cache
         self._problems: Dict[str, ProblemCase] = {}
         
@@ -609,3 +630,302 @@ class ProblemManager:
             json.dumps(plan.to_dict(), indent=2, ensure_ascii=False)
         )
         return plan_file
+
+    # =========================================================================
+    # Stack-spezifische Methoden (Phase 2.4)
+    # =========================================================================
+
+    def get_stack_profile(self, stack_id: str) -> Optional[StackProfile]:
+        """Returns Stack-Profil."""
+        try:
+            stack = StackID(stack_id)
+            return self.stack_manager.get_profile(stack)
+        except ValueError:
+            return None
+
+    def compare_stacks(self, capability: Optional[str] = None) -> Dict[str, Any]:
+        """Vergleicht beide Stacks."""
+        return self.stack_manager.compare_stacks(capability)
+
+    def recommend_stack_for_problem(
+        self,
+        problem_id: str,
+    ) -> str:
+        """
+        Empfiehlt besten Stack für Problem.
+
+        Args:
+            problem_id: ID des Problems
+
+        Returns:
+            Empfohlene StackID als String
+        """
+        problem = self.get_problem(problem_id)
+        if not problem:
+            return StackID.STACK_A.value
+
+        required_caps = problem.affected_components  # Als Proxy
+        recommendation = self.stack_manager.recommend_stack(
+            problem_type=problem.problem_type.value,
+            required_capabilities=required_caps,
+        )
+
+        return recommendation.value
+
+    def validate_solution_for_stack(
+        self,
+        problem_id: str,
+        solution_plan_id: str,
+        stack_id: str,
+    ) -> Dict[str, Any]:
+        """Validiert Solution-Plan für Stack."""
+        return self.stack_manager.validate_stack_compatibility(
+            solution_plan_id=solution_plan_id,
+            stack_id=StackID(stack_id),
+        )
+
+    # =========================================================================
+    # Validation Methods (Phase 3.1)
+    # =========================================================================
+
+    def validate_goal(
+        self,
+        problem_id: str,
+        implemented_changes: Optional[Dict[str, Any]] = None,
+    ) -> GoalValidationReport:
+        """
+        Führt Goal Validation durch.
+        
+        Prüft ob die Success Criteria des Problems erfüllt sind.
+        
+        Args:
+            problem_id: ID des Problems
+            implemented_changes: Beschreibung der Umsetzungen
+        
+        Returns:
+            GoalValidationReport
+        
+        Raises:
+            ValueError: Wenn Problem nicht gefunden
+        """
+        problem = self.get_problem(problem_id)
+        if not problem:
+            raise ValueError(f"Problem {problem_id} not found")
+        
+        logger.info(f"Validating goal for problem: {problem_id}")
+        
+        goal_validator = GoalValidator(repo_path=self.repo_path)
+        report = goal_validator.validate(problem, implemented_changes)
+        
+        # Report speichern
+        self._save_validation_report(problem_id, report)
+        
+        logger.info(
+            f"Goal Validation complete: {report.get_passed_count()}/{len(report.results)} passed"
+        )
+        
+        return report
+
+    def validate_intent(
+        self,
+        problem_id: str,
+        solution_description: str = "",
+    ) -> IntentValidationReport:
+        """
+        Führt Intent Validation durch.
+        
+        Prüft ob das ursprüngliche Problem wirklich gelöst wurde
+        oder nur Symptome behandelt wurden.
+        
+        Args:
+            problem_id: ID des Problems
+            solution_description: Beschreibung der Lösung
+        
+        Returns:
+            IntentValidationReport
+        
+        Raises:
+            ValueError: Wenn Problem nicht gefunden
+        """
+        problem = self.get_problem(problem_id)
+        if not problem:
+            raise ValueError(f"Problem {problem_id} not found")
+        
+        logger.info(f"Validating intent for problem: {problem_id}")
+        
+        intent_validator = IntentValidator(repo_path=self.repo_path)
+        report = intent_validator.validate(problem, solution_description)
+        
+        logger.info(f"Intent Validation complete: {report.overall_status.value}")
+        
+        return report
+
+    def _save_validation_report(
+        self,
+        problem_id: str,
+        report: GoalValidationReport,
+    ) -> Path:
+        """
+        Speichert Validation-Report persistently.
+
+        Args:
+            problem_id: ID des Problems
+            report: Zu speichernder GoalValidationReport
+
+        Returns:
+            Pfad zur gespeicherten Datei
+        """
+        report_file = self.problems_dir / f"{problem_id}_validation.json"
+        report_file.write_text(
+            json.dumps(report.to_dict(), indent=2, ensure_ascii=False)
+        )
+        return report_file
+
+    # =========================================================================
+    # Auto-Fix Methods (Phase 3.3)
+    # =========================================================================
+
+    def auto_fix(
+        self,
+        problem_id: str,
+        dry_run: bool = False,
+        validate: bool = True,
+    ) -> AutoFixResult:
+        """
+        Führt Auto-Fix für Problem durch.
+
+        Args:
+            problem_id: ID des Problems
+            dry_run: Wenn True, keine echten Änderungen
+            validate: Wenn True, Validation nach Anwendung
+
+        Returns:
+            AutoFixResult
+
+        Raises:
+            ValueError: Wenn Problem oder SolutionPlan nicht gefunden
+        """
+        problem = self.get_problem(problem_id)
+        if not problem:
+            raise ValueError(f"Problem {problem_id} not found")
+
+        logger.info(f"Starting auto-fix for problem: {problem_id}")
+
+        # SolutionPlan laden
+        plan = self.get_solution_plan(problem_id)
+        if not plan:
+            raise ValueError(f"No solution plan found for {problem_id}")
+
+        # AutoFixEngine erstellen
+        engine = create_auto_fix_engine(
+            repo_path=self.repo_path,
+            solution_plan=plan,
+            dry_run=dry_run,
+        )
+
+        # Patches generieren
+        result = engine.generate_patches()
+
+        # Patches anwenden
+        if not dry_run:
+            result = engine.apply_patches(result, validate=validate)
+
+        # Result speichern
+        self._save_auto_fix_result(problem_id, result)
+
+        logger.info(
+            f"Auto-Fix complete: {result.applied_count}/{len(result.patches)} applied"
+        )
+
+        return result
+
+    def rollback_fix(
+        self,
+        problem_id: str,
+    ) -> AutoFixResult:
+        """
+        Rollback von Auto-Fix.
+
+        Args:
+            problem_id: ID des Problems
+
+        Returns:
+            AutoFixResult nach Rollback
+
+        Raises:
+            ValueError: Wenn Problem oder AutoFixResult nicht gefunden
+        """
+        problem = self.get_problem(problem_id)
+        if not problem:
+            raise ValueError(f"Problem {problem_id} not found")
+
+        logger.info(f"Rolling back auto-fix for problem: {problem_id}")
+
+        # AutoFixResult laden
+        result = self._load_auto_fix_result(problem_id)
+        if not result:
+            raise ValueError(f"No auto-fix result found for {problem_id}")
+
+        # AutoFixEngine erstellen
+        plan = self.get_solution_plan(problem_id)
+        engine = create_auto_fix_engine(
+            repo_path=self.repo_path,
+            solution_plan=plan,
+            dry_run=False,
+        )
+
+        # Rollback durchführen
+        result = engine.rollback(result)
+
+        # Result speichern
+        self._save_auto_fix_result(problem_id, result)
+
+        logger.info(f"Rollback complete: {result.rolled_back_count} patches rolled back")
+
+        return result
+
+    def _save_auto_fix_result(
+        self,
+        problem_id: str,
+        result: AutoFixResult,
+    ) -> Path:
+        """
+        Speichert AutoFixResult persistently.
+
+        Args:
+            problem_id: ID des Problems
+            result: Zu speicherndes AutoFixResult
+
+        Returns:
+            Pfad zur gespeicherten Datei
+        """
+        result_file = self.problems_dir / f"{problem_id}_auto_fix.json"
+        result_file.write_text(
+            json.dumps(result.to_dict(), indent=2, ensure_ascii=False)
+        )
+        return result_file
+
+    def _load_auto_fix_result(
+        self,
+        problem_id: str,
+    ) -> Optional[AutoFixResult]:
+        """
+        Lädt AutoFixResult von Disk.
+
+        Args:
+            problem_id: ID des Problems
+
+        Returns:
+            AutoFixResult oder None
+        """
+        result_file = self.problems_dir / f"{problem_id}_auto_fix.json"
+
+        if result_file.exists():
+            try:
+                data = json.loads(result_file.read_text())
+                return AutoFixResult.from_dict(data)
+            except Exception as e:
+                logger.error(f"Failed to load auto-fix result: {e}")
+                return None
+
+        return None

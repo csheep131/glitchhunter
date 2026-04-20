@@ -7,6 +7,7 @@ and API Security rules. Provides comprehensive security scanning capabilities.
 
 import json
 import logging
+import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -209,7 +210,8 @@ class SemgrepRunner:
         """
         self.rules_path = rules_path
         self.timeout = timeout
-        self.semgrep_path = semgrep_path
+        # Use absolute path to semgrep to avoid issues when changing cwd
+        self.semgrep_path = shutil.which(semgrep_path) or semgrep_path
 
         logger.debug(f"SemgrepRunner initialized (rules={rules_path}, timeout={timeout}s)")
 
@@ -284,7 +286,6 @@ class SemgrepRunner:
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
-                cwd=repo_path,
             )
 
             scan_duration = time.time() - start_time
@@ -362,7 +363,6 @@ class SemgrepRunner:
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
-                cwd=repo_path,
             )
 
             scan_duration = time.time() - start_time
@@ -430,7 +430,6 @@ class SemgrepRunner:
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
-                cwd=repo_path,
             )
 
             scan_duration = time.time() - start_time
@@ -492,7 +491,6 @@ class SemgrepRunner:
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
-                cwd=repo_path,
             )
 
             scan_duration = time.time() - start_time
@@ -554,7 +552,6 @@ class SemgrepRunner:
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
-                cwd=repo_path,
             )
 
             scan_duration = time.time() - start_time

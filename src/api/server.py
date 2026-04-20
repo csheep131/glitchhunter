@@ -40,6 +40,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Setup logging based on config
         setup_logging(config.logging)
 
+        # Initialize AI communication logger if enabled
+        if hasattr(config, 'ai_logging') and config.ai_logging.enabled:
+            from core.ai_logger import init_ai_logger
+            init_ai_logger(config.ai_logging)
+            logger.info("AI Communication logging enabled")
+
         logger.info("Configuration loaded successfully")
         
         # Initialize State Machine

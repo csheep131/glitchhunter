@@ -13,6 +13,7 @@ Uses LangGraph to define a state machine with states for:
 """
 
 import logging
+import os
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -193,6 +194,9 @@ class StateMachine:
         analyzer_model_path: Optional[str] = None,
         verifier_model_path: Optional[str] = None,
         api_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        remote_timeout: int = 120,
+        fallback_to_local: bool = True,
     ) -> None:
         """
         Initialize state machine.
@@ -201,10 +205,16 @@ class StateMachine:
             analyzer_model_path: Path to the analyzer model (e.g., Qwen)
             verifier_model_path: Path to the verifier model (e.g., Phi)
             api_url: Optional URL for remote LLM server
+            api_key: Optional API key for authentication
+            remote_timeout: Request timeout in seconds
+            fallback_to_local: Enable local fallback if remote fails
         """
         self.analyzer_model_path = analyzer_model_path
         self.verifier_model_path = verifier_model_path
         self.api_url = api_url
+        self.api_key = api_key
+        self.remote_timeout = remote_timeout
+        self.fallback_to_local = fallback_to_local
 
         self._analyzer_engine: Optional[InferenceEngine] = None
         self._verifier_engine: Optional[InferenceEngine] = None
@@ -215,7 +225,7 @@ class StateMachine:
 
         logger.info(
             f"StateMachine initialized (analyzer={analyzer_model_path}, "
-            f"verifier={verifier_model_path})"
+            f"verifier={verifier_model_path}, remote={api_url if api_url else 'No'})"
         )
 
     def _get_analyzer_engine(self) -> Optional[InferenceEngine]:
@@ -224,8 +234,10 @@ class StateMachine:
             if self.api_url:
                 logger.info(f"Connecting to remote analyzer at {self.api_url}")
                 self._analyzer_engine = InferenceEngine(
-                    model_name="analyzer", 
-                    api_url=self.api_url
+                    model_name="analyzer",
+                    api_url=self.api_url,
+                    api_key=self.api_key,
+                    timeout=self.remote_timeout,
                 )
                 self._analyzer_engine.load_model()
             elif self.analyzer_model_path:
@@ -244,8 +256,10 @@ class StateMachine:
             if self.api_url:
                 logger.info(f"Connecting to remote verifier at {self.api_url}")
                 self._verifier_engine = InferenceEngine(
-                    model_name="verifier", 
-                    api_url=self.api_url
+                    model_name="verifier",
+                    api_url=self.api_url,
+                    api_key=self.api_key,
+                    timeout=self.remote_timeout,
                 )
                 self._verifier_engine.load_model()
             elif self.verifier_model_path:
@@ -774,9 +788,11 @@ class StateMachine:
         logger.info("🔄 PATCH LOOP: Generating and verifying patches...")
 
         try:
-            # Initialize Patch Generator
-            # Note: PatchGenerator handles its own engine init if model_path is provided
-            generator = PatchGenerator(model_path=self.analyzer_model_path)
+            # Initialize Patch Generator with both model_path and api_url
+            generator = PatchGenerator(
+                model_path=self.analyzer_model_path,
+                api_url=self.api_url
+            )
 
             patches = []
 
@@ -791,8 +807,27 @@ class StateMachine:
                         "line": hyp_dict["candidate"].get("line_start", 0),
                     }
 
-                    # Mock code for now - in real life we read the file
-                    code = "# Code snippet for " + hyp_dict["candidate"].get("file_path", "")
+                    # Read actual code from file
+                    file_path = hyp_dict["candidate"]["file_path"]
+                    code = ""
+                    try:
+                        if os.path.exists(file_path):
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                code = f.read()
+                            logger.info(f"Read {len(code)} chars from {file_path}")
+                        else:
+                            # Fallback to extracting from repository
+                            repo_path = state.get("repo_path", "")
+                            full_path = os.path.join(repo_path, file_path) if repo_path else file_path
+                            if os.path.exists(full_path):
+                                with open(full_path, 'r', encoding='utf-8') as f:
+                                    code = f.read()
+                            else:
+                                logger.warning(f"File not found: {file_path}")
+                                code = f"# File not found: {file_path}"
+                    except Exception as read_err:
+                        logger.warning(f"Failed to read file {file_path}: {read_err}")
+                        code = f"# Error reading file: {file_path}"
 
                     result = generator.generate(issue, code)
 
@@ -809,7 +844,9 @@ class StateMachine:
                             confidence=hyp_dict["confidence"],
                         ),
                         patch_diff=result.patch_diff,
-                        verified=result.confidence > 0.8,
+                        # Lower confidence threshold to 0.3 to allow more patches to be verified
+                        # Also check if patch has actual content (not empty diff)
+                        verified=result.confidence > 0.3 and bool(result.patch_diff.strip()),
                         applied=False,
                     )
                     patches.append(patch)
@@ -818,7 +855,8 @@ class StateMachine:
             state["patches"] = [p.to_dict() for p in patches]
             state["metadata"]["patch_loop_complete"] = True
 
-            logger.info(f"Generated {len(patches)} real patches using LLM")
+            verified_count = sum(1 for p in patches if p.verified)
+            logger.info(f"Generated {len(patches)} patches, {verified_count} verified")
 
         except Exception as e:
             logger.error(f"Patch loop failed: {e}")

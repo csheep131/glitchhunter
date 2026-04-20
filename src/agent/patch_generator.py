@@ -97,32 +97,51 @@ ANTWORT (JSON):
         self,
         model_path: Optional[str] = None,
         use_llm: bool = True,
+        api_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        remote_timeout: int = 120,
     ) -> None:
         """
         Initialisiert Patch-Generator.
-        
+
         Args:
             model_path: Pfad zum LLM-Modell.
             use_llm: LLM-Generierung aktivieren.
+            api_url: URL zu remote LLM API.
+            api_key: Optionaler API-Key für Authentifizierung.
+            remote_timeout: Request-Timeout in Sekunden.
         """
         self.model_path = model_path
         self.use_llm = use_llm
-        
+        self.api_url = api_url
+        self.api_key = api_key
+        self.remote_timeout = remote_timeout
+
         self._engine: Optional[InferenceEngine] = None
-        
-        if use_llm and model_path:
+
+        if use_llm and (model_path or api_url):
             self._init_engine()
-        
-        logger.info(f"PatchGenerator initialisiert: use_llm={use_llm}")
+
+        logger.info(f"PatchGenerator initialisiert: use_llm={use_llm}, remote={api_url if api_url else 'No'}")
     
     def _init_engine(self) -> None:
         """Initialisiert Inference-Engine."""
-        if self.model_path:
+        if self.model_path or self.api_url:
             self._engine = InferenceEngine(
-                model_name=self.model_path,
+                model_name=self.model_path or "remote-llm",
                 temperature=0.2,  # Etwas höher für Kreativität
                 max_tokens=2048,
+                api_url=self.api_url,
+                api_key=self.api_key,
+                timeout=self.remote_timeout,
             )
+            try:
+                self._engine.load_model(model_path=self.model_path)
+                logger.info(f"Inference-Engine geladen (model_path={self.model_path}, api_url={self.api_url})")
+            except Exception as e:
+                logger.warning(f"Engine konnte nicht geladen werden: {e}")
+                self._engine = None
+                self.use_llm = False
     
     def generate(
         self,

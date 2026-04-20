@@ -72,6 +72,16 @@ hardware:
       parallel_requests: true
       turbo_quant: true
 
+# AI Communication Logging (for debugging LLM interactions)
+ai_logging:
+  enabled: false
+  directory: "ai_logs"
+  max_files: 100
+  log_requests: true
+  log_responses: true
+  log_prompts: true
+  log_full_response: true
+
 # Pre-Filter Konfiguration (für beide Stacks)
 prefilter:
   enabled: true
@@ -185,6 +195,23 @@ api:
     enabled: false
     api_key_header: "X-API-Key"
 
+# Remote Llama Inference (Optional: Zentraler LLM-Server im Netzwerk)
+# Siehe docs/remote_llama_setup.md für Setup-Anleitung
+remote_inference:
+  enabled: false  # Auf true setzen für Remote-Betrieb
+  base_url: "http://192.168.1.100:8080"  # IP/URL des Llama-Servers
+  api_key: null  # Optional: API-Key für Auth
+  timeout: 120  # Request-Timeout in Sekunden
+  fallback_to_local: true  # Bei Server-Ausfall auf lokal wechseln
+  health_check_interval: 30  # Health-Check Intervall in Sekunden
+  
+  # Model-Mapping: GlitchHunter-Alias -> Server Model Name
+  model_mapping:
+    qwen3.5-9b: "qwen3.5-9b"
+    phi-4-mini: "phi-4-mini"
+    qwen3.5-27b: "qwen3.5-27b"
+    deepseek-v3.2-small: "deepseek-v3.2-small"
+
 # MCP Integration (SocratiCode)
 mcp_integration:
   enabled: true
@@ -203,13 +230,24 @@ logging:
   file: "logs/glitchhunter.log"
   max_size_mb: 100
   backup_count: 5
-  
+
   # Stack-spezifisches Logging
   stack_a:
     level: "DEBUG"
-  
+
   stack_b:
     level: "DEBUG"
+
+# AI Communication Logging (testweise)
+# Loggt alle LLM Requests/Responses für Debugging
+ai_logging:
+  enabled: false  # Auf true setzen zum Aktivieren
+  directory: "ai_logs"
+  max_files: 100  # Maximale Anzahl Log-Dateien
+  log_requests: true
+  log_responses: true
+  log_prompts: true  # Prompt-Inhalte (kann groß werden)
+  log_full_response: true  # Vollständige Response oder nur Summary
 
 # Feature Toggles
 features:

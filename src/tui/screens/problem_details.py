@@ -79,6 +79,7 @@ class ProblemDetailsScreen(Screen):
     BINDINGS = [
         Binding("e", "edit", "Bearbeiten"),
         Binding("c", "classify", "Klassifizieren"),
+        Binding("d", "diagnose", "Diagnose"),
         Binding("escape", "back", "Zurück"),
     ]
     
@@ -116,6 +117,11 @@ class ProblemDetailsScreen(Screen):
                     "🔍 Klassifizieren",
                     id="classify-button",
                     variant="warning",
+                )
+                yield Button(
+                    "🔬 Diagnose",
+                    id="diagnose-button",
+                    variant="success",
                 )
                 yield Button(
                     "🔄 Aktualisieren",
@@ -220,11 +226,13 @@ class ProblemDetailsScreen(Screen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Button-Clicks verarbeiten."""
         button_id = event.button.id
-        
+
         if button_id == "edit-button":
             self.action_edit()
         elif button_id == "classify-button":
             self.action_classify()
+        elif button_id == "diagnose-button":
+            self.action_diagnose()
         elif button_id == "refresh-button":
             self._load_problem()
             self.notify("🔄 Aktualisiert", severity="information")
@@ -244,28 +252,38 @@ class ProblemDetailsScreen(Screen):
                 severity="warning",
             )
             return
-        
+
         try:
             from problem.manager import ProblemManager
             from pathlib import Path
-            
+
             manager = ProblemManager(repo_path=Path(self.repo_path))
             result = manager.classify_problem(self.problem_id)
-            
+
             self.notify(
                 f"✅ Klassifiziert: {result.problem_type.value} "
                 f"({result.confidence:.0%})",
                 severity="information",
             )
-            
+
             # Reload
             self._load_problem()
-            
+
         except ValueError as e:
             self.notify(f"❌ Fehler: {e}", severity="error")
         except Exception as e:
             self.notify(f"❌ Fehler: {e}", severity="error")
-    
+
+    def action_diagnose(self) -> None:
+        """Zur Diagnose-Ansicht wechseln."""
+        from .problem_diagnosis import ProblemDiagnosisScreen
+        self.app.push_screen(
+            ProblemDiagnosisScreen(
+                repo_path=self.repo_path,
+                problem_id=self.problem_id,
+            )
+        )
+
     def action_back(self) -> None:
         """Zurück zur Übersicht."""
         self.app.pop_screen()

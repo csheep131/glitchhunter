@@ -105,6 +105,39 @@ python scripts/benchmark_v2.py --full  # Full benchmark incl. scan
 +---------------------------------------------------------------------+
 ```
 
+## LLM Server Setup
+
+GlitchHunter benötigt einen laufenden llama.cpp Server. Das `run_auto.sh` Skript startet ihn automatisch, oder manuell:
+
+```bash
+# Umgebungsvariablen
+export LLAMA_CPP_HOME="$HOME/tools/llama-cpp-turboquant-cuda/build"
+export MODEL_ANALYZER="$HOME/stuff/offline_llm/models/Qwen3.5-9B-UncensoredHauhauCS-Aggressive-Q4_K_M.gguf"
+export CHAT_TEMPLATE="$HOME/projects/glitchhunter/src/inference/templates/qwen_de.jinja"
+
+# Server starten (GPU)
+TURBO_LAYER_ADAPTIVE=1 "$LLAMA_CPP_HOME/bin/llama-server" \
+    -m "$MODEL_ANALYZER" \
+    -ctk turbo3 -ctv turbo3 \
+    -c 131072 -ngl 50 -fa on \
+    -t 8 -b 512 \
+    --host 0.0.0.0 --port 8080 \
+    --temp 0.3 --top-p 0.9 --min-p 0.1 \
+    --repeat-penalty 1.2 \
+    --reasoning off --reasoning-format none \
+    --chat-template-file "$CHAT_TEMPLATE"
+```
+
+### Server Parameter
+
+| Parameter | Wert | Beschreibung |
+|-----------|------|--------------|
+| `-ctk/-ctv turbo3` | KV-Cache Quant | Reduziert VRAM um ~30% |
+| `-c 131072` | 128K Context | Für große Codebases |
+| `-ngl 50` | 50 Layers GPU | Maximale GPU-Beschleunigung |
+| `-fa on` | Flash Attention | Schnellere Inferenz |
+| `--reasoning off` | Keine Reasoning Tags | Für saubere JSON-Ausgabe |
+
 ## Recommended Models
 
 GlitchHunter works best with these locally-run models. All are available via HuggingFace as GGUF quantized versions.
@@ -577,19 +610,308 @@ See [development/ROADMAP2_0.md](development/ROADMAP2_0.md) for detailed 12-week 
 - [x] CPU-only llama.cpp Fallback
 - [x] Fix Confidence Score
 
-### Phase 2 (Week 4-7): Intelligence
-- [ ] Self-Improving Rules (RuleLearner + Vector-DB)
-- [ ] Multi-Language Parity (Rust, Go, Java, C/C++)
-- [ ] Dynamic Analysis Sandbox (Coverage-guided Fuzzing)
+### Phase 2 (Week 4-7): Intelligence [DONE]
+- [x] Self-Improving Rules (RuleLearner + Vector-DB)
+- [x] Multi-Language Parity (Rust, Go, Java, C/C++)
+- [x] Dynamic Analysis Sandbox (Coverage-guided Fuzzing)
 
-### Phase 3 (Week 8-10): Automation
-- [ ] Draft-PR-Generation (GitHub + GitLab)
-- [ ] SBOM + Audit-Report Pipeline
-- [ ] Performance Benchmarks
+### Phase 3 (Week 8-10): Automation [DONE]
+- [x] Draft-PR-Generation (GitHub + GitLab)
+- [x] SBOM + Audit-Report Pipeline
+- [x] Performance Benchmarks
 
-### Phase 4 (Week 11-12): Release
-- [ ] Internal Dogfooding
-- [ ] v2.0 Release
+### Problem-Solver Extension [DONE - NEW]
+- [x] Problem Intake & Classification
+- [x] Diagnosis & Root Cause Analysis
+- [x] Problem Decomposition
+- [x] Solution Path Planning
+- [x] Stack-Specific Adapters
+- [x] Goal & Intent Validation
+- [x] Auto-Fix with Rollback
+
+---
+
+## Problem-Solver Mode
+
+GlitchHunter v2.0 introduces a **Problem-Solver Mode** that goes beyond traditional bug hunting. This mode accepts general problem statements, diagnoses root causes, decomposes complex issues, plans multiple solution paths, and automatically implements fixes with validation.
+
+### Complete Workflow
+
+```
+┌───────────────────────────────────────────────────────────────────┐
+│                    PROBLEM-SOLVER WORKFLOW                         │
+└───────────────────────────────────────────────────────────────────┘
+
+1. INTAKE         → Describe your problem
+2. CLASSIFICATION → Auto-detect problem type
+3. DIAGNOSIS      → Identify root causes
+4. DECOMPOSITION  → Break into subproblems
+5. PLANNING       → Generate solution paths
+6. STACK SELECT   → Choose execution environment
+7. AUTO-FIX       → Implement solutions
+8. VALIDATION     → Verify success
+9. REPORTS        → Document everything
+```
+
+### CLI Commands
+
+#### Problem Intake
+
+```bash
+# Create new problem from text
+glitchhunter problem intake "The startup is too slow"
+
+# Create from file
+glitchhunter problem intake -f problem_description.txt
+
+# With custom title
+glitchhunter problem intake "Performance issue" -t "Slow Startup"
+```
+
+#### Problem Management
+
+```bash
+# List all problems
+glitchhunter problem list
+
+# Filter by status
+glitchhunter problem list --status intake
+glitchhunter problem list --type performance
+
+# Show problem details
+glitchhunter problem show prob_20260415_001
+
+# Delete problem
+glitchhunter problem delete prob_20260415_001
+
+# Show statistics
+glitchhunter problem stats
+```
+
+#### Analysis
+
+```bash
+# Classify problem
+glitchhunter problem classify prob_20260415_001
+
+# Generate diagnosis
+glitchhunter problem diagnose prob_20260415_001
+
+# Decompose into subproblems
+glitchhunter problem decompose prob_20260415_001
+```
+
+#### Solution Planning
+
+```bash
+# Create solution plan with multiple paths
+glitchhunter problem plan prob_20260415_001
+
+# Select specific solution path
+glitchhunter problem select prob_20260415_001 sub_001 path_abc123
+```
+
+#### Stack Management
+
+```bash
+# Show available stacks
+glitchhunter problem stack
+
+# Compare stacks
+glitchhunter problem stack --compare
+
+# Show specific profile
+glitchhunter problem stack --profile stack_b
+
+# Get recommendation
+glitchhunter problem stack --recommend prob_20260415_001
+
+# Compare specific capability
+glitchhunter problem stack --compare --capability dynamic_analysis
+```
+
+#### Auto-Fix & Validation
+
+```bash
+# Execute auto-fix (dry-run first!)
+glitchhunter problem fix prob_20260415_001 --dry-run
+
+# Apply actual fixes
+glitchhunter problem fix prob_20260415_001
+
+# Skip validation (not recommended)
+glitchhunter problem fix prob_20260415_001 --no-validate
+
+# Rollback fixes
+glitchhunter problem rollback prob_20260415_001
+
+# Goal validation
+glitchhunter problem validate prob_20260415_001
+
+# Intent validation (detect superficial fixes)
+glitchhunter problem intent prob_20260415_001 -s "Implemented caching"
+```
+
+#### Reports
+
+```bash
+# Generate all reports
+glitchhunter problem report prob_20260415_001
+
+# With classification
+glitchhunter problem report prob_20260415_001 --classify
+
+# Custom output directory
+glitchhunter problem report prob_20260415_001 -o ./reports
+```
+
+### TUI Navigation
+
+Press `F4` in the main menu to access Problem-Solver mode.
+
+```
+Main Menu (F4: Problem-Solver)
+    ↓
+Problem Overview (List all problems)
+    ↓ (Show / 's')
+Problem Details
+    ↓ (Diagnosis / 'd')
+Problem Diagnosis (Causes, Data Flows, Uncertainties)
+    ↓ (Decompose / 'd')
+Problem Decomposition (Subproblems, Dependencies)
+    ↓ (Solution Plan / 'p')
+Problem Solution Plan (Solution Paths with Scores)
+    ↓ (Select Stack / 's')
+Problem Stack Select (Stack A / Stack B)
+```
+
+### Problem Types
+
+GlitchHunter recognizes 9 problem types automatically:
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `bug` | Traditional bugs | "The app crashes on startup" |
+| `performance` | Performance issues | "Startup is too slow" |
+| `reliability` | Stability issues | "App crashes randomly" |
+| `missing_feature` | Missing functionality | "Need export feature" |
+| `workflow_gap` | Manual steps to automate | "Want to automate this step" |
+| `integration_gap` | Integration issues | "STL files not processed" |
+| `ux_issue` | Usability problems | "UI is confusing" |
+| `refactor_required` | Code quality issues | "Code is hard to maintain" |
+| `unknown` | Unclassified | - |
+
+### Stack Profiles
+
+| Stack | VRAM | RAM | CPU | Capabilities |
+|-------|------|-----|-----|--------------|
+| **Stack A** (Standard) | 8GB | 32GB | 8 cores | Full capabilities, LIMITED dynamic analysis |
+| **Stack B** (Enhanced) | 24GB | 64GB | 16 cores | ENHANCED LLM analysis, dynamic analysis, patch generation |
+
+### Example Session
+
+```bash
+# 1. Create problem
+$ glitchhunter problem intake "STL files are not processed but GER files work fine"
+✅ Problem created: prob_20260415_001
+   Title: STL files are not processed but GER files work fine
+   Type: integration_gap
+   Status: intake
+
+# 2. Classify
+$ glitchhunter problem classify prob_20260415_001
+✅ Classification complete for prob_20260415_001
+Problem Type: integration_gap
+Confidence:   87%
+Keywords found (5): stl, ger, processed, files, work
+Affected components: api, integration
+
+# 3. Diagnose
+$ glitchhunter problem diagnose prob_20260415_001
+✅ Diagnose generiert für prob_20260415_001
+============================================================
+Zusammenfassung:
+Diagnose für Problem 'STL files are not processed...':
+Problemtyp: integration_gap
+Anzahl Ursachen: 3
+Anzahl Datenflüsse: 2
+Offene Unsicherheiten: 2
+
+🔍 Root Causes (1):
+  - Missing STL parser integration (Confidence: 75%)
+    Evidence: STL files not processed
+
+# 4. Decompose
+$ glitchhunter problem decompose prob_20260415_001
+✅ Problem zerlegt: prob_20260415_001
+Ansatz: Integration über Adapter-Pattern mit Testing
+
+Teilprobleme (6):
+1. ⚪ Schnittstellen-Analyse
+   Typ: analysis
+   Priorität: 1/10
+
+# 5. Plan
+$ glitchhunter problem plan prob_20260415_001
+✅ Lösungsplan erstellt für prob_20260415_001
+Strategie: Lösungsweg mit 6/6 ausgewählten Pfaden
+
+📍 Teilproblem: sub_001
+----------------------------------------
+✅ 1. Adapter-Pattern (Score: 7.8)
+   Typ: integration
+   Wirksamkeit: ★★★★★★★★★☆
+   Aufwand: 3/10 (12.0h)
+   Risiko: low
+
+# 6. Stack Recommendation
+$ glitchhunter problem stack --recommend prob_20260415_001
+✅ Empfehlung für prob_20260415_001:
+   Stack: stack_b
+
+# 7. Auto-Fix (DRY RUN FIRST!)
+$ glitchhunter problem fix prob_20260415_001 --dry-run
+✅ Auto-Fix für prob_20260415_001
+   (DRY RUN - keine Änderungen angewendet)
+Auto-Fix: 6/6 Patches erfolgreich (100% Success-Rate)
+
+# 8. Apply fixes
+$ glitchhunter problem fix prob_20260415_001
+
+# 9. Validate
+$ glitchhunter problem validate prob_20260415_001
+✅ Goal Validation für prob_20260415_001
+Goal Validation: 5/5 Kriterien erfüllt (100%)
+
+$ glitchhunter problem intent prob_20260415_001
+✅ Intent Validation für prob_20260415_001
+Original-Problem: STL files are not processed...
+Analyse:
+✅ Problem wurde adressiert
+✅ Symptome wurden gelöst
+✅ Root-Cause wurde behoben
+✅ Keine unerwünschten Nebeneffekte
+```
+
+### Output Files
+
+All problem data is stored in `.glitchhunter/problems/`:
+
+```
+.glitchhunter/problems/
+├── prob_20260415_001.json          # Problem case
+├── prob_20260415_001_diagnosis.json # Diagnosis
+├── prob_20260415_001_decomposition.json # Decomposition
+├── prob_20260415_001_solution_plan.json # Solution plan
+├── prob_20260415_001_auto_fix.json # Auto-fix result
+├── prob_20260415_001_validation.json # Goal validation
+└── prob_20260415_001_reports/
+    ├── prob_20260415_001_problem_case.json
+    ├── prob_20260415_001_diagnosis_stub.md
+    └── prob_20260415_001_constraints.md
+```
+
+---
 
 ## License
 

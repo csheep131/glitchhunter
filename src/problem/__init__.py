@@ -34,6 +34,30 @@ from .solution_path import (
     SolutionPlan,
     SolutionPlanner,
 )
+from .stack_adapter import (
+    StackID,
+    CapabilityLevel,
+    StackCapability,
+    StackProfile,
+    StackAdapterManager,
+    create_stack_adapter,
+)
+from .validation import (
+    ValidationStatus,
+    ValidationResult,
+    GoalValidationReport,
+    IntentValidationReport,
+    GoalValidator,
+    IntentValidator,
+    create_validator,
+)
+from .auto_fix import (
+    FixStatus,
+    FixPatch,
+    AutoFixResult,
+    AutoFixEngine,
+    create_auto_fix_engine,
+)
 
 __all__ = [
     "ProblemCase",
@@ -63,4 +87,25 @@ __all__ = [
     "RiskLevel",
     "SolutionPlan",
     "SolutionPlanner",
+    # Stack Adapter
+    "StackID",
+    "CapabilityLevel",
+    "StackCapability",
+    "StackProfile",
+    "StackAdapterManager",
+    "create_stack_adapter",
+    # Validation
+    "ValidationStatus",
+    "ValidationResult",
+    "GoalValidationReport",
+    "IntentValidationReport",
+    "GoalValidator",
+    "IntentValidator",
+    "create_validator",
+    # Auto-Fix
+    "FixStatus",
+    "FixPatch",
+    "AutoFixResult",
+    "AutoFixEngine",
+    "create_auto_fix_engine",
 ]

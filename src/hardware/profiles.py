@@ -70,11 +70,25 @@ class InferenceConfig:
     max_batch_size: int
     parallel_requests: bool
     turbo_quant: bool
+    remote_enabled: bool = False
+    remote_base_url: Optional[str] = None
+    remote_api_key: Optional[str] = None
+    remote_timeout: int = 120
+    remote_fallback_to_local: bool = True
 
     def __post_init__(self) -> None:
         """Validate inference configuration."""
         if self.max_batch_size < 1:
             raise ValueError("max_batch_size must be at least 1")
+    
+    @property
+    def is_remote(self) -> bool:
+        """Check if remote inference is enabled."""
+        return self.remote_enabled and self.remote_base_url is not None
+    
+    def get_api_url(self) -> Optional[str]:
+        """Get the remote API URL if enabled."""
+        return self.remote_base_url if self.is_remote else None
 
 
 @dataclass(frozen=True)

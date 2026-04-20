@@ -746,19 +746,23 @@ ANTWORT (JSON Format):
             # Robusteres JSON-Parsing
             clean_json = response_text.strip()
             
+            # Versuch 0: Remove <think>...</think> tags (Qwen3.5 reasoning format)
+            if "<think>" in clean_json:
+                clean_json = re.sub(r'<think>.*?</think>', '', clean_json, flags=re.DOTALL).strip()
+            
             # Versuch 1: Extract from markdown code block
-            if "```json" in response_text:
-                match = re.search(r'```json\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+            if "```json" in clean_json:
+                match = re.search(r'```json\s*(\{.*?\})\s*```', clean_json, re.DOTALL)
                 if match:
                     clean_json = match.group(1)
             
-            # Versuch 2: Extract first JSON object
-            elif "{" in response_text:
+            # Versuch 2: Extract first JSON object (if not already extracted)
+            if "{" in clean_json and not clean_json.startswith("{"):
                 # Finde erstes { und letztes } und versuche zu parsen
-                start = response_text.find("{")
-                end = response_text.rfind("}") + 1
+                start = clean_json.find("{")
+                end = clean_json.rfind("}") + 1
                 if start >= 0 and end > start:
-                    clean_json = response_text[start:end]
+                    clean_json = clean_json[start:end]
             
             # Versuch 3: Parse mit Fehlerbehandlung für "extra data"
             try:

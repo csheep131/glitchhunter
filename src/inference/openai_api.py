@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 from core.exceptions import InferenceError
+from core.ai_logger import log_request, log_response, log_error
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,16 @@ class OpenAIAPI:
 
         logger.debug(f"Sending chat completion request to {url}")
 
+        # Log request if AI logging enabled
+        request_id = log_request(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p,
+            **kwargs
+        )
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
@@ -108,7 +119,22 @@ class OpenAIAPI:
                     headers=self._headers,
                 )
                 response.raise_for_status()
-                return response.json()
+                result = response.json()
+
+                # Log response if AI logging enabled
+                if result and "choices" in result:
+                    content = result["choices"][0].get("message", {}).get("content", "")
+                    usage = result.get("usage")
+                    finish_reason = result["choices"][0].get("finish_reason")
+                    log_response(
+                        request_id=request_id,
+                        response_content=content,
+                        model=model,
+                        usage=usage,
+                        finish_reason=finish_reason
+                    )
+
+                return result
 
         except httpx.HTTPError as e:
             raise InferenceError(
@@ -246,6 +272,23 @@ class OpenAIAPI:
         except Exception:
             return False
 
+    def health_check_sync(self) -> bool:
+        """
+        Synchronous health check for API server.
+
+        Returns:
+            True if server is healthy
+        """
+        url = f"{self.base_url}/health"
+
+        try:
+            with httpx.Client(timeout=10) as client:
+                response = client.get(url)
+                return response.status_code == 200
+
+        except Exception:
+            return False
+
     def chat_completion_sync(
         self,
         messages: List[Dict[str, str]],
@@ -279,6 +322,15 @@ class OpenAIAPI:
 
         url = f"{self.base_url}{DEFAULT_CHAT_COMPLETION_ENDPOINT}"
 
+        # Log request if AI logging enabled
+        request_id = log_request(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **kwargs
+        )
+
         try:
             with httpx.Client(timeout=self.timeout) as client:
                 response = client.post(
@@ -287,9 +339,25 @@ class OpenAIAPI:
                     headers=self._headers,
                 )
                 response.raise_for_status()
-                return response.json()
+                result = response.json()
+
+                # Log response if AI logging enabled
+                if result and "choices" in result:
+                    content = result["choices"][0].get("message", {}).get("content", "")
+                    usage = result.get("usage")
+                    finish_reason = result["choices"][0].get("finish_reason")
+                    log_response(
+                        request_id=request_id,
+                        response_content=content,
+                        model=model,
+                        usage=usage,
+                        finish_reason=finish_reason
+                    )
+
+                return result
 
         except httpx.HTTPError as e:
+            log_error(request_id, e, model)
             raise InferenceError(
                 f"Chat completion request failed: {e}",
                 model_name=model,
