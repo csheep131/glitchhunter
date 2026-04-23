@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchHunter v3.0 - Reports</title>
+    <link rel="stylesheet" href="/static/components/base.css">
+    <link rel="stylesheet" href="/static/components/icons.css">
+    <link rel="stylesheet" href="/static/reports.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <img src="/static/assets/logo/logo_256.png" alt="GlitchHunter Logo" class="header-logo">
+                    <div>
+                        <h1 class="header-title">📊 Reports</h1>
+                        <p class="header-subtitle">Analyse-Berichte in verschiedenen Formaten</p>
+                    </div>
+                </div>
+                <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Navigation öffnen">
+                    <svg class="mobile-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <nav class="header-nav" id="mainNav">
+                    <a href="/" class="nav-btn">
+                        <img src="/static/assets/nav/dashboard.png" alt="" class="nav-icon"> Dashboard
+                    </a>
+                    <a href="/problem.html" class="nav-btn">
+                        <img src="/static/assets/nav/problem.png" alt="" class="nav-icon"> Problemlöser
+                    </a>
+                    <a href="/refactor.html" class="nav-btn">
+                        <img src="/static/assets/nav/refactor.png" alt="" class="nav-icon"> Refactoring
+                    </a>
+                    <a href="/reports.html" class="nav-btn active">
+                        <img src="/static/assets/nav/reports.png" alt="" class="nav-icon"> Reports
+                    </a>
+                    <a href="/history.html" class="nav-btn">
+                        <img src="/static/assets/nav/history.png" alt="" class="nav-icon"> History
+                    </a>
+                    <a href="/settings.html" class="nav-btn">
+                        <img src="/static/assets/nav/settings.png" alt="" class="nav-icon"> Einstellungen
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- New Report -->
+        <div class="card" id="newReportCard">
+            <h2>📝 Neuen Report erstellen</h2>
+            <form id="newReportForm" class="report-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="jobIdInput">Job-ID (optional):</label>
+                        <input 
+                            type="text" 
+                            id="jobIdInput" 
+                            placeholder="Job-ID für Analyse-Report"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="problemIdInput">Problem-ID (optional):</label>
+                        <input 
+                            type="text" 
+                            id="problemIdInput" 
+                            placeholder="Problem-ID für Problem-Report"
+                        >
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="formatSelect">Format:</label>
+                        <select id="formatSelect" required>
+                            <option value="markdown">📄 Markdown (.md)</option>
+                            <option value="json">📋 JSON (.json)</option>
+                            <option value="html">🌐 HTML (.html)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group checkbox-group-vertical">
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="includeRawData">
+                            <span>Rohdaten einschließen (nur JSON)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    📊 Report generieren
+                </button>
+            </form>
+        </div>
+
+        <!-- Reports List -->
+        <div class="card" id="reportsListCard" style="display: none;">
+            <h2>📁 Bericht-Übersicht</h2>
+            <div class="reports-toolbar">
+                <button type="button" id="refreshBtn" class="btn btn-small btn-secondary">
+                    🔄 Aktualisieren
+                </button>
+                <button type="button" id="deleteAllBtn" class="btn btn-small btn-secondary">
+                    🗑️ Alle löschen
+                </button>
+            </div>
+
+            <div id="reportsList" class="reports-list">
+                <!-- Reports werden dynamisch geladen -->
+            </div>
+        </div>
+
+        <!-- Report Preview Modal -->
+        <div id="previewModal" class="modal" style="display: none;">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2 id="previewTitle">Report-Vorschau</h2>
+                    <button class="close-btn" onclick="closePreview()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="preview-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">📊 Format:</span>
+                            <span id="previewFormat" class="meta-value">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">🕐 Erstellt:</span>
+                            <span id="previewDate" class="meta-value">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">📁 Report-ID:</span>
+                            <span id="previewId" class="meta-value">-</span>
+                        </div>
+                    </div>
+
+                    <div class="preview-actions">
+                        <button type="button" id="downloadBtn" class="btn btn-primary">
+                            ⬇️ Herunterladen
+                        </button>
+                        <button type="button" id="deleteBtn" class="btn btn-secondary">
+                            🗑️ Löschen
+                        </button>
+                    </div>
+
+                    <h3>Inhalt</h3>
+                    <div id="previewContent" class="preview-content">
+                        <!-- Inhalt wird dynamisch geladen -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center text-muted text-sm py-6">
+        <p>GlitchHunter v3.0 • AI-powered Code Analysis</p>
+        <p class="mt-2">
+            <a href="http://asgard:3000" target="_blank" class="nav-btn">💬 OpenWebUI</a>
+            <a href="/docs" target="_blank" class="nav-btn">📚 API Docs</a>
+        </p>
+    </footer>
+</div>
+
+<script>
+    function toggleMobileNav() {
+        const nav = document.getElementById('mainNav');
+        nav.classList.toggle('active');
+    }
+    
+    document.addEventListener('click', function(event) {
+        const nav = document.getElementById('mainNav');
+        const toggle = document.querySelector('.mobile-nav-toggle');
+        
+        if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+            nav.classList.remove('active');
+        }
+    });
+</script>
+<script src="/static/reports.js"></script>
+</body>
+</html>

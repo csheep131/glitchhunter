@@ -1,995 +1,891 @@
-# GlitchHunter v2.0 - API Documentation
+# GlitchHunter v3.0 - API-Referenz
 
-## Overview
+**Version:** 3.0.0-dev  
+**Letztes Update:** 20. April 2026  
+**Status:** Implementiert ✅
 
-GlitchHunter provides a RESTful API for programmatic access to all Problem-Solver and Bug-Hunting features.
+## Inhaltsverzeichnis
 
-**Base URL:** `http://localhost:8000`  
-**API Version:** `v2.0`  
-**Content Type:** `application/json`
-
----
-
-## Table of Contents
-
-1. [Authentication](#authentication)
-2. [Problems API](#problems-api)
-3. [Analysis API](#analysis-api)
-4. [Reports API](#reports-api)
-5. [Stack API](#stack-api)
-6. [WebSocket API](#websocket-api)
-7. [Error Handling](#error-handling)
-8. [Rate Limiting](#rate-limiting)
+1. [Übersicht](#übersicht)
+2. [Swarm Coordinator](#swarm-coordinator)
+3. [Agenten](#agenten)
+4. [ML Prediction](#ml-prediction)
+5. [Auto-Refactoring](#auto-refactoring)
+6. [Sandbox & Tracing](#sandbox--tracing)
+7. [Types & Interfaces](#types--interfaces)
+8. [CLI-API](#cli-api)
 
 ---
 
-## Authentication
+## Übersicht
 
-Currently, the API does not require authentication for local usage. For production deployments, configure API keys in `config.yaml`:
-
-```yaml
-api:
-  authentication:
-    enabled: true
-    api_key: "your-api-key"
-```
-
-Include in requests:
-```bash
-curl -H "X-API-Key: your-api-key" http://localhost:8000/api/...
-```
-
----
-
-## Problems API
-
-### Create Problem
-
-**POST** `/api/problems`
-
-Create a new problem case.
-
-#### Request Body
-
-```json
-{
-  "description": "The application startup is too slow",
-  "title": "Slow Startup (optional)",
-  "source": "api"
-}
-```
-
-#### Response
-
-**201 Created**
-```json
-{
-  "id": "prob_20260415_001",
-  "title": "Slow Startup",
-  "raw_description": "The application startup is too slow",
-  "problem_type": "performance",
-  "severity": "medium",
-  "status": "intake",
-  "created_at": "2026-04-15T10:30:00",
-  "source": "api"
-}
-```
-
-#### Example
-
-```bash
-curl -X POST http://localhost:8000/api/problems \
-  -H "Content-Type: application/json" \
-  -d '{
-    "description": "The application startup is too slow"
-  }'
-```
-
----
-
-### List Problems
-
-**GET** `/api/problems`
-
-Retrieve all problems with optional filtering.
-
-#### Query Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `status` | string | Filter by status (intake, diagnosis, planning, implementation, validation, closed) |
-| `type` | string | Filter by problem type (bug, performance, etc.) |
-| `limit` | integer | Maximum results (default: 50) |
-| `offset` | integer | Pagination offset |
-
-#### Response
-
-**200 OK**
-```json
-{
-  "problems": [
-    {
-      "id": "prob_20260415_001",
-      "title": "Slow Startup",
-      "problem_type": "performance",
-      "status": "diagnosis",
-      "created_at": "2026-04-15T10:30:00"
-    }
-  ],
-  "total": 1,
-  "limit": 50,
-  "offset": 0
-}
-```
-
-#### Example
-
-```bash
-# List all
-curl http://localhost:8000/api/problems
-
-# Filter by status
-curl "http://localhost:8000/api/problems?status=intake"
-
-# Filter by type
-curl "http://localhost:8000/api/problems?type=performance"
-```
-
----
-
-### Get Problem
-
-**GET** `/api/problems/{problem_id}`
-
-Retrieve detailed problem information.
-
-#### Response
-
-**200 OK**
-```json
-{
-  "id": "prob_20260415_001",
-  "title": "Slow Startup",
-  "raw_description": "The application startup is too slow",
-  "problem_type": "performance",
-  "severity": "medium",
-  "status": "diagnosis",
-  "goal_state": "Startup should complete in <5 seconds",
-  "affected_components": ["startup", "initialization"],
-  "success_criteria": [
-    "Startup time < 5 seconds",
-    "No errors in logs"
-  ],
-  "risk_level": "medium",
-  "target_stack": "auto",
-  "created_at": "2026-04-15T10:30:00",
-  "updated_at": "2026-04-15T10:35:00"
-}
-```
-
-#### Example
-
-```bash
-curl http://localhost:8000/api/problems/prob_20260415_001
-```
-
----
-
-### Classify Problem
-
-**POST** `/api/problems/{problem_id}/classify`
-
-Automatically classify a problem.
-
-#### Response
-
-**200 OK**
-```json
-{
-  "problem_id": "prob_20260415_001",
-  "problem_type": "performance",
-  "confidence": 0.87,
-  "keywords_found": ["slow", "startup", "performance"],
-  "affected_components": ["startup", "initialization"],
-  "alternatives": [
-    {"problem_type": "reliability", "confidence": 0.45}
-  ],
-  "recommended_actions": [
-    "Performance measurement",
-    "Identify bottlenecks",
-    "Analyze startup sequence"
-  ]
-}
-```
-
-#### Example
-
-```bash
-curl -X POST http://localhost:8000/api/problems/prob_20260415_001/classify
-```
-
----
-
-### Get Diagnosis
-
-**GET** `/api/problems/{problem_id}/diagnosis`
-
-Retrieve diagnosis for a problem.
-
-#### Response
-
-**200 OK**
-```json
-{
-  "problem_id": "prob_20260415_001",
-  "status": "complete",
-  "summary": "Diagnosis for 'Slow Startup': 3 causes identified",
-  "root_cause_summary": "- Inefficient initialization (Confidence: 75%)\n- Blocking I/O (Confidence: 60%)",
-  "causes": [
-    {
-      "id": "cause_001",
-      "description": "Inefficient initialization",
-      "cause_type": "root_cause",
-      "confidence": 0.75,
-      "evidence": ["Startup takes 30 seconds"],
-      "is_blocking": true
-    }
-  ],
-  "data_flows": [
-    {
-      "id": "flow_001",
-      "name": "Startup Sequence",
-      "source": "main()",
-      "sink": "App.init()",
-      "issues": ["Blocking I/O in init"]
-    }
-  ],
-  "uncertainties": [
-    {
-      "id": "unc_001",
-      "question": "Is this the actual root cause?",
-      "impact": "high",
-      "resolution_steps": ["Profile startup", "Analyze logs"]
-    }
-  ],
-  "recommended_next_steps": [
-    "Verify root cause",
-    "Profile startup sequence"
-  ]
-}
-```
-
-#### Example
-
-```bash
-curl http://localhost:8000/api/problems/prob_20260415_001/diagnosis
-```
-
----
-
-### Decompose Problem
-
-**POST** `/api/problems/{problem_id}/decompose`
-
-Decompose problem into subproblems.
-
-#### Response
-
-**200 OK**
-```json
-{
-  "problem_id": "prob_20260415_001",
-  "subproblems": [
-    {
-      "id": "sub_001",
-      "title": "Performance Measurement",
-      "description": "Measure current startup performance",
-      "subproblem_type": "analysis",
-      "priority": 1,
-      "effort": "low",
-      "status": "open",
-      "dependencies": []
-    },
-    {
-      "id": "sub_002",
-      "title": "Bottleneck Identification",
-      "description": "Identify performance bottlenecks",
-      "subproblem_type": "analysis",
-      "priority": 2,
-      "effort": "medium",
-      "status": "open",
-      "dependencies": ["sub_001"]
-    }
-  ],
-  "summary": "Problem decomposed into 6 subproblems",
-  "statistics": {
-    "total_subproblems": 6,
-    "blocking_count": 1,
-    "ready_count": 3
-  }
-}
-```
-
-#### Example
-
-```bash
-curl -X POST http://localhost:8000/api/problems/prob_20260415_001/decompose
-```
-
----
-
-### Create Solution Plan
-
-**POST** `/api/problems/{problem_id}/plan`
-
-Generate solution plan with multiple paths.
-
-#### Query Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `use_decomposition` | boolean | true | Use decomposition if available |
-
-#### Response
-
-**200 OK**
-```json
-{
-  "problem_id": "prob_20260415_001",
-  "solution_paths": {
-    "sub_001": [
-      {
-        "id": "path_001",
-        "title": "Manual Profiling",
-        "description": "Manual performance profiling",
-        "solution_type": "analysis",
-        "effectiveness": 8,
-        "invasiveness": 2,
-        "risk": "low",
-        "effort": 3,
-        "testability": 9,
-        "estimated_hours": 2.0,
-        "overall_score": 7.8
-      },
-      {
-        "id": "path_002",
-        "title": "Automated Profiling",
-        "description": "Use automated profiling tools",
-        "solution_type": "automation",
-        "effectiveness": 9,
-        "invasiveness": 3,
-        "risk": "low",
-        "effort": 4,
-        "testability": 8,
-        "estimated_hours": 4.0,
-        "overall_score": 7.5
-      }
-    ]
-  },
-  "selected_paths": {
-    "sub_001": "path_001"
-  },
-  "overall_strategy": "Solution strategy with 6/6 selected paths",
-  "statistics": {
-    "total_subproblems": 6,
-    "total_paths": 18,
-    "selected_count": 6,
-    "quick_wins": 2,
-    "high_risk_paths": 0
-  }
-}
-```
-
-#### Example
-
-```bash
-curl -X POST http://localhost:8000/api/problems/prob_20260415_001/plan
-```
-
----
-
-### Select Solution Path
-
-**PATCH** `/api/problems/{problem_id}/plan/select`
-
-Select a specific solution path for a subproblem.
-
-#### Request Body
-
-```json
-{
-  "subproblem_id": "sub_001",
-  "path_id": "path_002"
-}
-```
-
-#### Response
-
-**200 OK**
-```json
-{
-  "success": true,
-  "subproblem_id": "sub_001",
-  "selected_path_id": "path_002"
-}
-```
-
-#### Example
-
-```bash
-curl -X PATCH http://localhost:8000/api/problems/prob_20260415_001/plan/select \
-  -H "Content-Type: application/json" \
-  -d '{
-    "subproblem_id": "sub_001",
-    "path_id": "path_002"
-  }'
-```
-
----
-
-### Get Stack Recommendation
-
-**GET** `/api/problems/{problem_id}/stack/recommend`
-
-Get recommended stack for a problem.
-
-#### Response
-
-**200 OK**
-```json
-{
-  "problem_id": "prob_20260415_001",
-  "recommended_stack": "stack_b",
-  "reason": "Performance analysis requires enhanced capabilities",
-  "profile": {
-    "stack_id": "stack_b",
-    "name": "Stack B (Enhanced)",
-    "description": "Enhanced stack for 24GB GPU configuration",
-    "resources": {
-      "max_memory_gb": 64,
-      "max_cpu_cores": 16,
-      "gpu_available": true,
-      "gpu_memory_gb": 24.0
-    }
-  }
-}
-```
-
-#### Example
-
-```bash
-curl http://localhost:8000/api/problems/prob_20260415_001/stack/recommend
-```
-
----
-
-### Execute Auto-Fix
-
-**POST** `/api/problems/{problem_id}/fix`
-
-Execute auto-fix based on solution plan.
-
-#### Query Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `dry_run` | boolean | true | Don't apply actual changes |
-| `validate` | boolean | true | Validate after applying |
-
-#### Response
-
-**200 OK**
-```json
-{
-  "problem_id": "prob_20260415_001",
-  "overall_status": "completed",
-  "summary": "Auto-Fix: 6/6 patches successful (100% Success-Rate)",
-  "patches": [
-    {
-      "id": "patch_001",
-      "subproblem_id": "sub_001",
-      "file_path": "src/startup.py",
-      "status": "completed",
-      "validation_passed": true,
-      "rollback_available": true
-    }
-  ],
-  "statistics": {
-    "total_patches": 6,
-    "applied": 6,
-    "failed": 0,
-    "rolled_back": 0,
-    "success_rate": 100.0
-  }
-}
-```
-
-#### Example
-
-```bash
-# Dry run
-curl -X POST "http://localhost:8000/api/problems/prob_20260415_001/fix?dry_run=true"
-
-# Apply fixes
-curl -X POST "http://localhost:8000/api/problems/prob_20260415_001/fix?dry_run=false"
-```
-
----
-
-### Rollback Auto-Fix
-
-**POST** `/api/problems/{problem_id}/rollback`
-
-Rollback applied auto-fix.
-
-#### Response
-
-**200 OK**
-```json
-{
-  "problem_id": "prob_20260415_001",
-  "overall_status": "rolled_back",
-  "summary": "Rollback: 6/6 patches rolled back",
-  "patches": [
-    {
-      "id": "patch_001",
-      "status": "rolled_back"
-    }
-  ]
-}
-```
-
-#### Example
-
-```bash
-curl -X POST http://localhost:8000/api/problems/prob_20260415_001/rollback
-```
-
----
-
-### Goal Validation
-
-**POST** `/api/problems/{problem_id}/validate`
-
-Perform goal validation.
-
-#### Response
-
-**200 OK**
-```json
-{
-  "problem_id": "prob_20260415_001",
-  "overall_status": "passed",
-  "summary": "Goal Validation: 5/5 criteria met (100%)",
-  "results": [
-    {
-      "criterion": "Startup time < 5 seconds",
-      "status": "passed",
-      "evidence": ["Measured: 3.2 seconds"],
-      "metrics": {"startup_time_ms": 3200}
-    }
-  ],
-  "statistics": {
-    "total_criteria": 5,
-    "passed": 5,
-    "failed": 0,
-    "completion_percentage": 100.0
-  }
-}
-```
-
-#### Example
-
-```bash
-curl -X POST http://localhost:8000/api/problems/prob_20260415_001/validate
-```
-
----
-
-### Intent Validation
-
-**POST** `/api/problems/{problem_id}/intent`
-
-Perform intent validation (detect superficial fixes).
-
-#### Request Body
-
-```json
-{
-  "solution_description": "Implemented caching for startup sequence"
-}
-```
-
-#### Response
-
-**200 OK**
-```json
-{
-  "problem_id": "prob_20260415_001",
-  "original_problem_description": "The application startup is too slow",
-  "original_intent": "Startup should complete in <5 seconds",
-  "problem_addressed": true,
-  "symptoms_resolved": true,
-  "root_cause_fixed": true,
-  "no_side_effects": true,
-  "analysis": "✅ Problem was addressed\n✅ Symptoms resolved\n✅ Root cause fixed\n✅ No side effects",
-  "concerns": [],
-  "overall_status": "passed"
-}
-```
-
-#### Example
-
-```bash
-curl -X POST http://localhost:8000/api/problems/prob_20260415_001/intent \
-  -H "Content-Type: application/json" \
-  -d '{
-    "solution_description": "Implemented caching"
-  }'
-```
-
----
-
-### Delete Problem
-
-**DELETE** `/api/problems/{problem_id}`
-
-Delete a problem case.
-
-#### Response
-
-**200 OK**
-```json
-{
-  "success": true,
-  "problem_id": "prob_20260415_001"
-}
-```
-
-#### Example
-
-```bash
-curl -X DELETE http://localhost:8000/api/problems/prob_20260415_001
-```
-
----
-
-## Analysis API
-
-### Start Analysis
-
-**POST** `/api/analysis`
-
-Start code analysis (Bug-Hunting mode).
-
-#### Request Body
-
-```json
-{
-  "path": "/path/to/code",
-  "incremental": true,
-  "security_only": false
-}
-```
-
-#### Response
-
-**202 Accepted**
-```json
-{
-  "analysis_id": "analysis_20260415_001",
-  "status": "running",
-  "path": "/path/to/code",
-  "started_at": "2026-04-15T10:30:00"
-}
-```
-
-#### Example
-
-```bash
-curl -X POST http://localhost:8000/api/analysis \
-  -H "Content-Type: application/json" \
-  -d '{
-    "path": "/path/to/code"
-  }'
-```
-
----
-
-### Get Analysis Results
-
-**GET** `/api/analysis/{analysis_id}`
-
-Retrieve analysis results.
-
-#### Response
-
-**200 OK**
-```json
-{
-  "analysis_id": "analysis_20260415_001",
-  "status": "completed",
-  "findings": [
-    {
-      "id": "finding_001",
-      "type": "security",
-      "severity": "high",
-      "file_path": "src/auth.py",
-      "line": 42,
-      "message": "SQL Injection vulnerability"
-    }
-  ],
-  "summary": {
-    "total_findings": 5,
-    "security": 3,
-    "correctness": 2
-  }
-}
-```
-
----
-
-## Reports API
-
-### Generate Report
-
-**POST** `/api/problems/{problem_id}/report`
-
-Generate all reports for a problem.
-
-#### Query Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `classify` | boolean | false | Include classification |
-| `output_dir` | string | default | Custom output directory |
-
-#### Response
-
-**200 OK**
-```json
-{
-  "problem_id": "prob_20260415_001",
-  "reports": {
-    "problem_case": "/path/to/problem_case.json",
-    "diagnosis_stub": "/path/to/diagnosis_stub.md",
-    "constraints": "/path/to/constraints.md"
-  }
-}
-```
-
----
-
-## Stack API
-
-### List Stacks
-
-**GET** `/api/stacks`
-
-List available stacks.
-
-#### Response
-
-**200 OK**
-```json
-{
-  "stacks": [
-    {
-      "stack_id": "stack_a",
-      "name": "Stack A (Standard)",
-      "description": "Standard stack for 8GB GPU",
-      "capabilities": {
-        "total": 15,
-        "supported": 14
-      },
-      "resources": {
-        "max_memory_gb": 32,
-        "max_cpu_cores": 8,
-        "gpu_available": true,
-        "gpu_memory_gb": 8.0
-      }
-    },
-    {
-      "stack_id": "stack_b",
-      "name": "Stack B (Enhanced)",
-      "description": "Enhanced stack for 24GB GPU",
-      "capabilities": {
-        "total": 15,
-        "supported": 15
-      },
-      "resources": {
-        "max_memory_gb": 64,
-        "max_cpu_cores": 16,
-        "gpu_available": true,
-        "gpu_memory_gb": 24.0
-      }
-    }
-  ]
-}
-```
-
----
-
-### Compare Stacks
-
-**GET** `/api/stacks/compare`
-
-Compare both stacks.
-
-#### Query Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `capability` | string | Compare specific capability |
-
-#### Response
-
-**200 OK**
-```json
-{
-  "stack_a": {
-    "name": "Stack A (Standard)",
-    "capabilities": {
-      "total_capabilities": 15,
-      "supported_capabilities": 14,
-      "capability_coverage": 93.3
-    }
-  },
-  "stack_b": {
-    "name": "Stack B (Enhanced)",
-    "capabilities": {
-      "total_capabilities": 15,
-      "supported_capabilities": 15,
-      "capability_coverage": 100.0
-    }
-  },
-  "differences": {
-    "capability_coverage": {
-      "stack_a": 93.3,
-      "stack_b": 100.0,
-      "difference": 6.7
-    },
-    "resources": {
-      "memory": {"stack_a": 32, "stack_b": 64},
-      "cpu": {"stack_a": 8, "stack_b": 16},
-      "gpu": {"stack_a": 8.0, "stack_b": 24.0}
-    }
-  }
-}
-```
-
----
-
-## WebSocket API
-
-### Real-time Updates
-
-Connect to WebSocket for real-time progress updates:
-
-```javascript
-const ws = new WebSocket('ws://localhost:8000/ws/problems/prob_20260415_001');
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Update:', data);
-};
-```
-
-#### Message Types
-
-```json
-{
-  "type": "classification_complete",
-  "problem_id": "prob_20260415_001",
-  "data": {...}
-}
-```
-
----
-
-## Error Handling
-
-### Error Response Format
-
-```json
-{
-  "error": {
-    "code": "PROBLEM_NOT_FOUND",
-    "message": "Problem prob_20260415_001 not found",
-    "details": {...}
-  }
-}
-```
-
-### HTTP Status Codes
-
-| Code | Meaning |
-|------|---------|
-| 200 | Success |
-| 201 | Created |
-| 202 | Accepted (processing) |
-| 400 | Bad Request |
-| 404 | Not Found |
-| 422 | Validation Error |
-| 500 | Internal Server Error |
-
-### Error Codes
-
-| Code | Description |
-|------|-------------|
-| `PROBLEM_NOT_FOUND` | Problem ID doesn't exist |
-| `INVALID_STATUS` | Invalid problem status |
-| `INVALID_TYPE` | Invalid problem type |
-| `VALIDATION_FAILED` | Validation errors |
-| `FIX_FAILED` | Auto-fix failed |
-
----
-
-## Rate Limiting
-
-Default rate limits:
-
-- **100 requests/minute** per endpoint
-- **1000 requests/hour** total
-
-Exceeded limits return `429 Too Many Requests`.
-
----
-
-## SDK Examples
-
-### Python
+GlitchHunter v3.0 bietet eine vollständige Python-API für alle Funktionen. Alle öffentlichen Klassen sind in den folgenden Modulen verfügbar:
 
 ```python
-import requests
-
-# Create problem
-response = requests.post(
-    'http://localhost:8000/api/problems',
-    json={'description': 'Performance issue'}
-)
-problem = response.json()
-
-# Classify
-response = requests.post(
-    f'http://localhost:8000/api/problems/{problem["id"]}/classify'
-)
-classification = response.json()
-
-# Get diagnosis
-response = requests.get(
-    f'http://localhost:8000/api/problems/{problem["id"]}/diagnosis'
-)
-diagnosis = response.json()
-
-# Execute fix (dry-run)
-response = requests.post(
-    f'http://localhost:8000/api/problems/{problem["id"]}/fix?dry_run=true'
-)
-fix_result = response.json()
-```
-
-### JavaScript
-
-```javascript
-const API_BASE = 'http://localhost:8000/api';
-
-// Create problem
-const response = await fetch(`${API_BASE}/problems`, {
-  method: 'POST',
-  headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({description: 'Performance issue'})
-});
-const problem = await response.json();
-
-// Classify
-const classResponse = await fetch(
-  `${API_BASE}/problems/${problem.id}/classify`,
-  {method: 'POST'}
-);
-const classification = await classResponse.json();
+from glitchhunter import SwarmCoordinator, GlitchHunter
+from glitchhunter.agent import BaseAgent, SwarmFinding
+from glitchhunter.prediction import PredictionEngine, PredictionResult
+from glitchhunter.fixing import AutoRefactor, RefactoringSuggestion
+from glitchhunter.sandbox import DynamicTracer, BaseTracer
 ```
 
 ---
 
-**GlitchHunter v2.0 API** - Complete programmatic access to all features.
+## Swarm Coordinator
+
+### SwarmCoordinator
+
+**Modul:** `agent.swarm_coordinator`  
+**Beschreibung:** Haupt-Koordinator für den Multi-Agent Swarm
+
+#### Constructor
+
+```python
+class SwarmCoordinator:
+    def __init__(
+        self,
+        config: Optional[Config] = None
+    )
+```
+
+**Parameter:**
+- `config` (Optional[Config]): Optionale Konfiguration. Wenn nicht angegeben, wird `Config.load()` verwendet.
+
+**Beispiel:**
+```python
+from glitchhunter import SwarmCoordinator
+
+coordinator = SwarmCoordinator()
+```
+
+#### Methoden
+
+##### run_swarm
+
+Führt eine komplette Swarm-Analyse durch.
+
+```python
+async def run_swarm(
+    repo_path: str | Path,
+    agents: Optional[List[str]] = None,
+    enable_ml: bool = True,
+    enable_refactoring: bool = True,
+) -> SwarmState
+```
+
+**Parameter:**
+- `repo_path`: Pfad zum Repository
+- `agents`: Optionale Liste von Agenten-Namen (default: alle)
+- `enable_ml`: ML-Prediction aktivieren (default: True)
+- `enable_refactoring`: Auto-Refactoring aktivieren (default: True)
+
+**Returns:** `SwarmState` mit allen Findings
+
+**Beispiel:**
+```python
+from pathlib import Path
+
+coordinator = SwarmCoordinator()
+results = await coordinator.run_swarm(
+    Path("/path/to/repo"),
+    agents=["static", "dynamic"],
+    enable_ml=True,
+)
+
+print(f"Static Findings: {len(results.static_findings)}")
+print(f"Dynamic Findings: {len(results.dynamic_findings)}")
+```
+
+##### get_all_findings
+
+Extrahiert alle Findings aus dem Swarm-State.
+
+```python
+def get_all_findings(
+    self,
+    state: SwarmState,
+    min_confidence: float = 0.0,
+    severity: Optional[str] = None,
+) -> List[SwarmFinding]
+```
+
+**Parameter:**
+- `state`: SwarmState nach `run_swarm()`
+- `min_confidence`: Minimum Confidence-Filter (0-1)
+- `severity`: Optionaler Severity-Filter
+
+**Returns:** Liste von SwarmFinding
+
+**Beispiel:**
+```python
+all_findings = coordinator.get_all_findings(
+    results,
+    min_confidence=0.7,
+    severity="high",
+)
+```
+
+---
+
+## Agenten
+
+### BaseAgent
+
+**Modul:** `agent.agents.base`  
+**Beschreibung:** Abstrakte Basisklasse für alle Agenten
+
+```python
+class BaseAgent(ABC):
+    def __init__(self, name: str)
+    
+    @abstractmethod
+    async def analyze(self, repo_path: Path, **kwargs) -> Dict[str, Any]:
+        """Führt Hauptanalyse durch."""
+        pass
+    
+    @abstractmethod
+    async def get_findings(self) -> List[Dict[str, Any]]:
+        """Extrahiert Findings."""
+        pass
+    
+    async def cleanup(self) -> None:
+        """Räumt Ressourcen auf."""
+    
+    def get_metadata(self) -> Dict[str, Any]:
+        """Returns Metadaten."""
+```
+
+### StaticScannerAgent
+
+**Modul:** `agent.agents.static_scanner`  
+**Beschreibung:** Statische Code-Analyse mit Tree-sitter
+
+```python
+class StaticScannerAgent(BaseAgent):
+    async def analyze(self, repo_path: Path, **kwargs) -> Dict[str, Any]:
+        """
+        Führt statische Analyse durch.
+        
+        Features:
+        - Tree-sitter AST-Parsing
+        - Complexity-Metriken
+        - Code-Smell-Detection
+        """
+```
+
+**Beispiel:**
+```python
+from agent.agents.static_scanner import StaticScannerAgent
+
+scanner = StaticScannerAgent()
+results = await scanner.analyze(Path("/path/to/repo"))
+findings = await scanner.get_findings()
+```
+
+### DynamicTracerAgent
+
+**Modul:** `agent.agents.dynamic_tracer`  
+**Beschreibung:** Dynamische Analyse mit Runtime-Tracing
+
+```python
+class DynamicTracerAgent(BaseAgent):
+    async def analyze(self, repo_path: Path, **kwargs) -> Dict[str, Any]:
+        """
+        Führt dynamische Analyse durch.
+        
+        Features:
+        - Coverage-guided Fuzzing
+        - eBPF/ptrace Tracing
+        - Runtime Error Detection
+        """
+```
+
+**Beispiel:**
+```python
+from agent.agents.dynamic_tracer import DynamicTracerAgent
+
+tracer = DynamicTracerAgent()
+results = await tracer.analyze(
+    Path("/path/to/repo"),
+    enable_ebpf=True,
+    timeout=60,
+)
+```
+
+### ExploitGeneratorAgent
+
+**Modul:** `agent.agents.exploit_generator`  
+**Beschreibung:** Generiert PoC-Testcases für Findings
+
+```python
+class ExploitGeneratorAgent(BaseAgent):
+    async def analyze(self, repo_path: Path, **kwargs) -> Dict[str, Any]:
+        """
+        Generiert Exploits für Findings.
+        
+        Input: Findings mit 'exploit_ready=True'
+        Output: PoC-Testcases
+        """
+```
+
+### RefactoringBotAgent
+
+**Modul:** `agent.agents.refactoring_bot`  
+**Beschreibung:** Generiert Auto-Refactoring Vorschläge
+
+```python
+class RefactoringBotAgent(BaseAgent):
+    async def analyze(self, repo_path: Path, **kwargs) -> Dict[str, Any]:
+        """
+        Generiert Refactoring-Vorschläge.
+        
+        Features:
+        - Extract Method
+        - Remove Duplicates
+        - Replace Magic Numbers
+        - Simplify Conditions
+        """
+```
+
+### ReportAggregatorAgent
+
+**Modul:** `agent.agents.report_aggregator`  
+**Beschreibung:** Konsolidiert alle Findings
+
+```python
+class ReportAggregatorAgent(BaseAgent):
+    async def analyze(self, repo_path: Path, **kwargs) -> Dict[str, Any]:
+        """
+        Konsolidiert alle Findings.
+        
+        Features:
+        - Deduplizierung
+        - Confidence-Boosting
+        - Evidence-Merging
+        """
+```
+
+---
+
+## ML Prediction
+
+### PredictionEngine
+
+**Modul:** `prediction.engine`  
+**Beschreibung:** Engine für ML-basierte Bug-Vorhersage
+
+#### Constructor
+
+```python
+class PredictionEngine:
+    def __init__(
+        self,
+        model_path: Optional[Path] = None,
+        use_cpu: bool = True,
+        min_probability: float = 0.4,
+    )
+```
+
+**Parameter:**
+- `model_path`: Pfad zum ONNX-Modell
+- `use_cpu`: Nur CPU verwenden (default: True)
+- `min_probability`: Minimum Bug-Wahrscheinlichkeit (default: 0.4)
+
+#### Methoden
+
+##### predict
+
+Führt Bug-Vorhersage für Repository durch.
+
+```python
+async def predict(
+    self,
+    repo_path: Path,
+    symbol_graph: Optional[nx.DiGraph] = None,
+    **kwargs,
+) -> List[PredictionFinding]
+```
+
+**Parameter:**
+- `repo_path`: Pfad zum Repository
+- `symbol_graph`: Optionaler Symbol-Graph
+
+**Returns:** Liste von PredictionFinding
+
+**Beispiel:**
+```python
+from glitchhunter.prediction import PredictionEngine
+import networkx as nx
+
+engine = PredictionEngine(min_probability=0.5)
+
+# Mit Symbol-Graph
+symbol_graph = nx.read_graphml("symbol_graph.graphml")
+predictions = await engine.predict(
+    Path("/path/to/repo"),
+    symbol_graph=symbol_graph,
+)
+
+for pred in predictions:
+    print(f"{pred.file_path}:{pred.line_start}")
+    print(f"  Risk: {pred.risk_level}")
+    print(f"  Probability: {pred.bug_probability:.0%}")
+```
+
+##### predict_batch
+
+Batch-Prediction für mehrere Dateien.
+
+```python
+async def predict_batch(
+    self,
+    file_paths: List[Path],
+    batch_size: int = 32,
+) -> List[PredictionResult]
+```
+
+**Beispiel:**
+```python
+files = list(Path("/path/to/repo").glob("**/*.py"))
+results = await engine.predict_batch(files, batch_size=64)
+```
+
+### GlitchPredictionModel
+
+**Modul:** `prediction.model`  
+**Beschreibung:** ONNX-Modell für Bug-Vorhersage
+
+```python
+class GlitchPredictionModel:
+    def __init__(
+        self,
+        model_path: Optional[Path] = None,
+        use_cpu: bool = True,
+    )
+    
+    def predict(
+        self,
+        features: np.ndarray,
+    ) -> List[PredictionResult]:
+        """
+        Führt Prediction durch.
+        
+        Parameter:
+        - features: Feature-Matrix (n_samples, 32)
+        
+        Returns:
+        - Liste von PredictionResult
+        """
+```
+
+### FeatureExtractor
+
+**Modul:** `prediction.features.extractor`  
+**Beschreibung:** Extrahiert 32-dimensionale Features
+
+```python
+class FeatureExtractor:
+    def extract(
+        self,
+        symbol: str,
+        graph: nx.DiGraph,
+        code: str,
+    ) -> FeatureVector:
+        """Extrahiert Features für ein Symbol."""
+    
+    def batch_extract(
+        self,
+        graph: nx.DiGraph,
+    ) -> List[FeatureVector]:
+        """Extrahiert Features für alle Symbole."""
+```
+
+**Feature-Kategorien:**
+
+| Kategorie | Features | Extraktor |
+|-----------|----------|-----------|
+| Graph | 8 | `GraphFeatureExtractor` |
+| Complexity | 8 | `ComplexityFeatureExtractor` |
+| Structural | 8 | `StructuralFeatureExtractor` |
+| History | 8 | `HistoryFeatureExtractor` |
+
+---
+
+## Auto-Refactoring
+
+### AutoRefactor
+
+**Modul:** `fixing.auto_refactor`  
+**Beschreibung:** Engine für automatisches Refactoring
+
+#### Constructor
+
+```python
+class AutoRefactor:
+    def __init__(
+        self,
+        use_git: bool = True,
+        run_tests: bool = True,
+        backup: bool = True,
+    )
+```
+
+**Parameter:**
+- `use_git`: Git für Rollback verwenden (default: True)
+- `run_tests`: Tests nach Refactoring ausführen (default: True)
+- `backup`: Backup-Dateien erstellen (default: True)
+
+#### Methoden
+
+##### analyze_file
+
+Analysiert Datei auf Refactoring-Möglichkeiten.
+
+```python
+async def analyze_file(
+    self,
+    file_path: Path,
+    complexity_data: Optional[Dict[str, Any]] = None,
+) -> List[RefactoringSuggestion]
+```
+
+**Beispiel:**
+```python
+from glitchhunter.fixing import AutoRefactor
+
+refactor = AutoRefactor()
+suggestions = await refactor.analyze_file(Path("src/module.py"))
+
+for suggestion in suggestions:
+    print(f"{suggestion.title}: {suggestion.description}")
+    print(f"  Confidence: {suggestion.confidence:.0%}")
+```
+
+##### refactor_file
+
+Wendet Refactoring auf Datei an.
+
+```python
+async def refactor_file(
+    self,
+    file_path: Path,
+    suggestion: RefactoringSuggestion,
+) -> RefactoringResult
+```
+
+**Returns:** `RefactoringResult` mit Erfolgsstatus
+
+**Beispiel:**
+```python
+if suggestions:
+    result = await refactor.refactor_file(
+        Path("src/module.py"),
+        suggestions[0],
+    )
+    
+    if result.success:
+        print(f"Refactoring erfolgreich!")
+        print(f"Git-Commit: {result.git_commit}")
+        print(f"Diff:\n{result.diff}")
+    else:
+        print(f"Refactoring fehlgeschlagen: {result.error}")
+```
+
+##### rollback
+
+Führt Rollback durch.
+
+```python
+def rollback(
+    self,
+    commit_hash: str,
+) -> bool:
+    """Rollback zu Git-Commit."""
+```
+
+### RefactoringSuggestion
+
+**Modul:** `fixing.types`  
+**Beschreibung:** Datenklasse für Refactoring-Vorschlag
+
+```python
+@dataclass
+class RefactoringSuggestion:
+    id: str
+    file_path: str
+    line_start: int
+    line_end: int
+    category: str  # complexity, duplication, smell, optimization
+    title: str
+    description: str
+    original_code: str
+    suggested_code: str
+    confidence: float = 0.5
+    risk_level: str = "medium"
+    estimated_impact: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+```
+
+### RefactoringResult
+
+**Modul:** `fixing.types`  
+**Beschreibung:** Datenklasse für Refactoring-Ergebnis
+
+```python
+@dataclass
+class RefactoringResult:
+    suggestion: RefactoringSuggestion
+    success: bool
+    applied_code: Optional[str] = None
+    git_commit: Optional[str] = None
+    diff: Optional[str] = None
+    test_result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+```
+
+### Analyzer
+
+#### ComplexityAnalyzer
+
+**Modul:** `fixing.analyzers.complexity_analyzer`
+
+```python
+class ComplexityAnalyzer(BaseAnalyzer):
+    async def analyze(self, code: str) -> ComplexityAnalysisResult:
+        """
+        Analysiert Code-Complexity.
+        
+        Metriken:
+        - Cyclomatic Complexity
+        - Cognitive Complexity
+        - LOC
+        - Halstead Metrics
+        """
+```
+
+#### SmellAnalyzer
+
+**Modul:** `fixing.analyzers.smell_analyzer`
+
+```python
+class SmellAnalyzer(BaseAnalyzer):
+    async def analyze(self, code: str) -> SmellAnalysisResult:
+        """
+        Erkennt Code-Smells.
+        
+        Smells:
+        - Magic Numbers
+        - Long Methods
+        - God Classes
+        - Feature Envy
+        """
+```
+
+#### DuplicateAnalyzer
+
+**Modul:** `fixing.analyzers.duplicate_analyzer`
+
+```python
+class DuplicateAnalyzer(BaseAnalyzer):
+    async def analyze(self, code: str) -> DuplicateAnalysisResult:
+        """
+        Erkennt Code-Duplikate.
+        
+        Features:
+        - Token-basierter Vergleich
+        - AST-basierter Vergleich
+        - Fuzzy Matching
+        """
+```
+
+---
+
+## Sandbox & Tracing
+
+### DynamicTracer
+
+**Modul:** `sandbox.dynamic_tracer`  
+**Beschreibung:** Facade für Dynamic Tracing
+
+```python
+class DynamicTracer:
+    async def trace(
+        self,
+        target: str,
+        timeout: int = 60,
+        enable_ebpf: bool = True,
+    ) -> TraceResult:
+        """
+        Führt Runtime-Tracing durch.
+        
+        Parameter:
+        - target: Ziel-Datei oder Funktion
+        - timeout: Timeout in Sekunden
+        - enable_ebpf: eBPF aktivieren (Linux)
+        """
+```
+
+### BaseTracer
+
+**Modul:** `sandbox.tracers.base`  
+**Beschreibung:** Interface für alle Tracer
+
+```python
+class BaseTracer(ABC):
+    @abstractmethod
+    async def trace(self, target: str) -> TraceResult:
+        pass
+    
+    @abstractmethod
+    async def get_coverage(self) -> CoverageResult:
+        pass
+    
+    async def cleanup(self) -> None:
+        """Räumt Ressourcen auf."""
+```
+
+### PythonTracer
+
+**Modul:** `sandbox.tracers.python_tracer`  
+**Beschreibung:** Tracer für Python mit coverage.py
+
+```python
+class PythonTracer(BaseTracer):
+    async def trace(self, target: str) -> TraceResult:
+        """
+        Traced Python-Code.
+        
+        Features:
+        - coverage.py Integration
+        - Line Coverage
+        - Branch Coverage
+        """
+```
+
+### EbpfTracer
+
+**Modul:** `sandbox.tracers.ebpf_tracer`  
+**Beschreibung:** eBPF-Tracer für Linux (BCC)
+
+```python
+class EbpfTracer(BaseTracer):
+    async def trace(self, target: str) -> TraceResult:
+        """
+        Traced mit eBPF.
+        
+        Features:
+        - System Calls
+        - Function Entry/Exit
+        - Memory Access
+        """
+```
+
+**Hinweis:** Nur auf Linux mit BCC verfügbar.
+
+---
+
+## Types & Interfaces
+
+### SwarmFinding
+
+**Modul:** `agent.state`  
+**Beschreibung:** Einheitliches Finding-Format
+
+```python
+@dataclass
+class SwarmFinding:
+    id: str
+    agent: str  # static, dynamic, exploit, refactor, report
+    file_path: str
+    line_start: int
+    line_end: int
+    severity: str  # critical, high, medium, low, info
+    category: str  # security, performance, correctness, style
+    title: str
+    description: str
+    evidence: List[Evidence]
+    confidence: float  # 0-1
+    exploit_ready: bool
+    fix_suggestion: Optional[str]
+    metadata: Dict[str, Any]
+```
+
+### SwarmState
+
+**Modul:** `agent.state`  
+**Beschreibung:** Geteilter State für Swarm
+
+```python
+@dataclass
+class SwarmState:
+    repo_path: Optional[str]
+    current_phase: str
+    static_findings: List[SwarmFinding]
+    dynamic_findings: List[SwarmFinding]
+    exploit_findings: List[SwarmFinding]
+    refactor_findings: List[SwarmFinding]
+    aggregated_findings: List[SwarmFinding]
+    prediction_results: List[PredictionResult]
+    errors: List[str]
+    metadata: Dict[str, Any]
+```
+
+### PredictionResult
+
+**Modul:** `prediction.types`
+
+```python
+@dataclass
+class PredictionResult:
+    symbol_name: str
+    file_path: str
+    bug_probability: float  # 0-1
+    severity_score: float  # 0-1
+    risk_level: str  # low, medium, high, critical
+    confidence: float  # 0-1
+    feature_importance: Optional[Dict[str, float]]
+```
+
+### Evidence
+
+**Modul:** `agent.evidence_types`  
+**Beschreibung:** Evidence für Finding-Validierung
+
+```python
+@dataclass
+class Evidence:
+    type: str  # static, dynamic, ml, history
+    source: str  # Agent oder Tool
+    data: Dict[str, Any]
+    confidence: float  # 0-1
+    timestamp: datetime
+```
+
+---
+
+## CLI-API
+
+### Command-Line Interface
+
+GlitchHunter bietet ein CLI für alle Hauptfunktionen:
+
+```bash
+# Hilfe
+glitchhunter --help
+
+# Analyse
+glitchhunter analyze <pfad> [Optionen]
+
+# Refactoring
+glitchhunter refactor <pfad> [Optionen]
+
+# Report
+glitchhunter report <pfad> [Optionen]
+
+# Check
+glitchhunter check
+```
+
+### CLI als Python-Modul
+
+```python
+from glitchhunter.cli import main
+
+# CLI programmatisch aufrufen
+if __name__ == "__main__":
+    main(["analyze", "/path/to/repo", "--swarm"])
+```
+
+---
+
+## Fehlerbehandlung
+
+### Exceptions
+
+GlitchHunter definiert folgende Exceptions:
+
+```python
+class GlitchHunterError(Exception):
+    """Base-Exception für alle GlitchHunter-Fehler."""
+
+class AnalysisError(GlitchHunterError):
+    """Fehler während der Analyse."""
+
+class PredictionError(GlitchHunterError):
+    """Fehler während ML-Prediction."""
+
+class RefactoringError(GlitchHunterError):
+    """Fehler während Refactoring."""
+
+class SandboxError(GlitchHunterError):
+    """Fehler in der Sandbox."""
+```
+
+### Error Handling Beispiel
+
+```python
+from glitchhunter import SwarmCoordinator
+from glitchhunter.exceptions import AnalysisError, PredictionError
+
+coordinator = SwarmCoordinator()
+
+try:
+    results = await coordinator.run_swarm(Path("/path/to/repo"))
+except AnalysisError as e:
+    print(f"Analyse fehlgeschlagen: {e}")
+except PredictionError as e:
+    print(f"Prediction fehlgeschlagen: {e}")
+except Exception as e:
+    print(f"Unbekannter Fehler: {e}")
+```
+
+---
+
+## Best Practices
+
+### 1. Async/Await korrekt verwenden
+
+Alle Hauptmethoden sind async:
+
+```python
+# ✅ Korrekt
+results = await coordinator.run_swarm(path)
+
+# ❌ Falsch (blockiert)
+results = coordinator.run_swarm(path)
+```
+
+### 2. Ressourcen aufräumen
+
+```python
+async with SwarmCoordinator() as coordinator:
+    results = await coordinator.run_swarm(path)
+# Automatische cleanup()
+```
+
+### 3. Confidence-Filter verwenden
+
+```python
+# Nur hochwertige Findings
+findings = [f for f in results.static_findings if f.confidence >= 0.7]
+```
+
+### 4. Git-Rollback vorbereiten
+
+```python
+# Vor Refactoring
+refactor = AutoRefactor(use_git=True, backup=True)
+
+# Bei Fehler
+if not result.success:
+    refactor.rollback(checkpoint_commit)
+```
+
+---
+
+## Verwandte Dokumente
+
+- **[Getting Started](GETTING_STARTED.md)** - Installationsanleitung
+- **[Architektur](ARCHITECTURE.md)** - System-Design
+- **[Contributing](CONTRIBUTING.md)** - Entwicklungsrichtlinien

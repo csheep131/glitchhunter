@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchHunter v3.0 - Stack-Management</title>
+    <link rel="stylesheet" href="/static/components/base.css">
+    <link rel="stylesheet" href="/static/components/icons.css">
+    <link rel="stylesheet" href="/static/stacks.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <img src="/static/assets/logo/logo_256.png" alt="GlitchHunter Logo" class="header-logo">
+                    <div>
+                        <h1 class="header-title">📚 Stack-Management</h1>
+                        <p class="header-subtitle">Hardware-Stacks verwalten und konfigurieren</p>
+                    </div>
+                </div>
+                <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Navigation öffnen">
+                    <svg class="mobile-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <nav class="header-nav" id="mainNav">
+                    <a href="/" class="nav-btn">
+                        <img src="/static/assets/nav/dashboard.png" alt="" class="nav-icon"> Dashboard
+                    </a>
+                    <a href="/problem.html" class="nav-btn">
+                        <img src="/static/assets/nav/problem.png" alt="" class="nav-icon"> Problemlöser
+                    </a>
+                    <a href="/refactor.html" class="nav-btn">
+                        <img src="/static/assets/nav/refactor.png" alt="" class="nav-icon"> Refactoring
+                    </a>
+                    <a href="/reports.html" class="nav-btn">
+                        <img src="/static/assets/nav/reports.png" alt="" class="nav-icon"> Reports
+                    </a>
+                    <a href="/history.html" class="nav-btn">
+                        <img src="/static/assets/nav/history.png" alt="" class="nav-icon"> History
+                    </a>
+                    <a href="/settings.html" class="nav-btn">
+                        <img src="/static/assets/nav/settings.png" alt="" class="nav-icon"> Einstellungen
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Stack Cards -->
+        <div class="stacks-grid" id="stacksGrid">
+            <!-- Stack A -->
+            <div class="stack-card" data-stack="stack_a">
+                <div class="stack-header">
+                    <h2>📦 Stack A (Standard)</h2>
+                    <span class="stack-status status-offline" id="status_stack_a">Offline</span>
+                </div>
+                <div class="stack-info">
+                    <div class="info-row">
+                        <span class="info-label">Hardware:</span>
+                        <span class="info-value">GTX 3060 (8GB)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Modus:</span>
+                        <span class="info-value">Sequenziell</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Modelle:</span>
+                        <span class="info-value">Qwen3.5-9B, Phi-4-mini</span>
+                    </div>
+                </div>
+                <div class="stack-actions">
+                    <button class="btn btn-small btn-primary" onclick="window.location.href='/stack-config.html'">
+                        ⚙️ Konfigurieren
+                    </button>
+                    <button class="btn btn-small btn-secondary" onclick="stacksManager.testStack('stack_a', 'quick')">
+                        🧪 Quick-Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stack B -->
+            <div class="stack-card featured" data-stack="stack_b">
+                <div class="stack-header">
+                    <h2>⚡ Stack B (Enhanced)</h2>
+                    <span class="stack-status status-online" id="status_stack_b">Online</span>
+                </div>
+                <div class="stack-badge">Empfohlen</div>
+                <div class="stack-info">
+                    <div class="info-row">
+                        <span class="info-label">Hardware:</span>
+                        <span class="info-value">RTX 3090 (24GB)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Modus:</span>
+                        <span class="info-value">Parallel</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Modelle:</span>
+                        <span class="info-value">Qwen3.5-27B, DeepSeek-V3.2</span>
+                    </div>
+                </div>
+                <div class="stack-actions">
+                    <button class="btn btn-small btn-primary" onclick="stacksManager.showConfig('stack_b')">
+                        ⚙️ Konfigurieren
+                    </button>
+                    <button class="btn btn-small btn-secondary" onclick="stacksManager.testStack('stack_b', 'quick')">
+                        🧪 Quick-Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stack C -->
+            <div class="stack-card" data-stack="stack_c">
+                <div class="stack-header">
+                    <h2>🌐 Stack C (Remote API)</h2>
+                    <span class="stack-status status-online" id="status_stack_c">Online</span>
+                </div>
+                <div class="stack-info">
+                    <div class="info-row">
+                        <span class="info-label">Hardware:</span>
+                        <span class="info-value">Remote APIs</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Modus:</span>
+                        <span class="info-value">Hybrid</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Provider:</span>
+                        <span class="info-value">Ollama, OpenAI, Anthropic</span>
+                    </div>
+                </div>
+                <div class="stack-actions">
+                    <button class="btn btn-small btn-primary" onclick="stacksManager.showConfig('stack_c')">
+                        ⚙️ Konfigurieren
+                    </button>
+                    <button class="btn btn-small btn-secondary" onclick="stacksManager.testStack('stack_c', 'quick')">
+                        🧪 Quick-Test
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Config Modal -->
+        <div id="configModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="configTitle">Stack Konfiguration</h2>
+                    <button class="close-btn" onclick="closeConfig()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="configForm" class="config-form">
+                        <!-- Wird dynamisch gefüllt -->
+                    </form>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-primary" onclick="stacksManager.saveConfig()">
+                            💾 Speichern
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="closeConfig()">
+                            ❌ Abbrechen
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Results Modal -->
+        <div id="testModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🧪 Test-Ergebnis</h2>
+                    <button class="close-btn" onclick="closeTest()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="testProgress" class="test-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="testProgressFill"></div>
+                        </div>
+                        <p id="testProgressText">Test läuft...</p>
+                    </div>
+                    <div id="testResults" class="test-results" style="display: none;">
+                        <!-- Wird dynamisch gefüllt -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center text-muted text-sm py-6">
+        <p>GlitchHunter v3.0 • AI-powered Code Analysis</p>
+        <p class="mt-2">
+            <a href="http://asgard:3000" target="_blank" class="nav-btn">💬 OpenWebUI</a>
+            <a href="/docs" target="_blank" class="nav-btn">📚 API Docs</a>
+        </p>
+    </footer>
+</div>
+
+<script>
+    function toggleMobileNav() {
+        const nav = document.getElementById('mainNav');
+        nav.classList.toggle('active');
+    }
+    
+    document.addEventListener('click', function(event) {
+        const nav = document.getElementById('mainNav');
+        const toggle = document.querySelector('.mobile-nav-toggle');
+        
+        if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+            nav.classList.remove('active');
+        }
+    });
+</script>
+<script src="/static/stacks.js"></script>
+</body>
+</html>

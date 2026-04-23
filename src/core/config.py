@@ -21,6 +21,130 @@ DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent / "config.yaml"
 
 
 @dataclass
+class RateLimitConfig:
+    """
+    Rate-Limiting-Konfiguration für Remote-APIs.
+
+    Attributes:
+        enabled: Ob Rate-Limiting aktiviert ist
+        requests_per_minute: Maximale Anzahl Requests pro Minute
+        tokens_per_minute: Maximale Anzahl Tokens pro Minute
+        burst_limit: Maximale Anzahl gleichzeitiger Requests
+    """
+
+    enabled: bool = True
+    requests_per_minute: int = 60
+    tokens_per_minute: int = 100000
+    burst_limit: int = 10
+
+
+@dataclass
+class RetryConfig:
+    """
+    Retry-Konfiguration mit exponentiellem Backoff.
+
+    Attributes:
+        enabled: Ob Retry aktiviert ist
+        max_retries: Maximale Anzahl Retry-Versuche
+        initial_delay: Initiale Verzögerung in Sekunden
+        max_delay: Maximale Verzögerung in Sekunden
+        exponential_base: Basis für exponentielle Berechnung
+        retry_on_status_codes: HTTP-Status-Codes die Retry auslösen
+    """
+
+    enabled: bool = True
+    max_retries: int = 3
+    initial_delay: float = 1.0
+    max_delay: float = 60.0
+    exponential_base: float = 2.0
+    retry_on_status_codes: List[int] = field(default_factory=lambda: [429, 500, 502, 503, 504])
+
+
+@dataclass
+class CacheConfig:
+    """
+    Caching-Konfiguration für Remote-API-Antworten.
+
+    Attributes:
+        enabled: Ob Caching aktiviert ist
+        backend: Cache-Backend ("memory" oder "redis")
+        ttl_seconds: Time-To-Live in Sekunden
+        max_size: Maximale Anzahl Cache-Einträge
+        redis_url: Redis-Verbindungs-URL (nur für redis-Backend)
+    """
+
+    enabled: bool = True
+    backend: str = "memory"
+    ttl_seconds: int = 3600
+    max_size: int = 1000
+    redis_url: Optional[str] = None
+
+
+@dataclass
+class APIKeyManagerConfig:
+    """
+    API-Key-Management-Konfiguration.
+
+    Attributes:
+        enabled: Ob API-Key-Management aktiviert ist
+        key_file: Pfad zur verschlüsselten API-Key-Datei
+        encryption_password_env: Name der Environment-Variable für Master-Passwort
+    """
+
+    enabled: bool = True
+    key_file: str = ".glitchhunter/api_keys.enc"
+    encryption_password_env: str = "GLITCHHUNTER_MASTER_PASSWORD"
+
+
+@dataclass
+class RemoteProviderConfig:
+    """
+    Konfiguration für einen Remote-Provider.
+
+    Attributes:
+        name: Name des Providers
+        base_url: Basis-URL der API
+        api_key_env: Name der Environment-Variable für API-Key (optional)
+        model_mapping: Mapping von lokalen zu remote Modellnamen
+        rate_limit: Rate-Limiting-Konfiguration (optional)
+        timeout: Request-Timeout in Sekunden
+        retry_config: Retry-Konfiguration (optional)
+    """
+
+    name: str
+    base_url: str
+    api_key_env: Optional[str] = None
+    model_mapping: Dict[str, str] = field(default_factory=dict)
+    rate_limit: Optional[RateLimitConfig] = None
+    timeout: int = 120
+    retry_config: Optional[RetryConfig] = None
+
+
+@dataclass
+class StackCConfig:
+    """
+    Konfiguration für Stack C (Remote API).
+
+    Attributes:
+        name: Name des Stacks
+        enabled: Ob Stack C aktiviert ist
+        providers: Dictionary von Provider-Konfigurationen
+        default_provider: Standard-Provider für Requests
+        cache: Cache-Konfiguration
+        api_key_manager: API-Key-Manager-Konfiguration
+        fallback_chain: Fallback-Kette bei Provider-Fehlern
+    """
+
+    name: str = "stack_c"
+    enabled: bool = True
+    providers: Dict[str, RemoteProviderConfig] = field(default_factory=dict)
+    default_provider: str = "ollama_lan"
+    cache: CacheConfig = field(default_factory=CacheConfig)
+    api_key_manager: APIKeyManagerConfig = field(default_factory=APIKeyManagerConfig)
+    fallback_chain: List[str] = field(default_factory=lambda: ["ollama_lan", "local_stack_a"])
+
+
+@dataclass
 class HardwareStackConfig:
     """Configuration for a hardware stack."""
 
@@ -232,6 +356,7 @@ class Config:
     model_downloads: ModelDownloadsConfig
     mcp_integration: MCPConfig
     remote_inference: RemoteInferenceConfig = field(default_factory=RemoteInferenceConfig)
+    stack_c: StackCConfig = field(default_factory=StackCConfig)
 
     @classmethod
     def load(cls, config_path: Optional[Path] = None) -> "Config":
@@ -410,6 +535,10 @@ class Config:
                 model_mapping=remote_data.get("model_mapping", {}),
             )
 
+            # Parse Stack C config
+            stack_c_data = data.get("stack_c", {})
+            stack_c = cls._parse_stack_c_config(stack_c_data)
+
             return cls(
                 hardware=hardware,
                 prefilter=prefilter,
@@ -423,6 +552,7 @@ class Config:
                 model_downloads=model_downloads_config,
                 mcp_integration=mcp_integration,
                 remote_inference=remote_inference,
+                stack_c=stack_c,
             )
 
         except TypeError as e:
@@ -430,6 +560,70 @@ class Config:
                 f"Invalid configuration structure: {e}",
                 details={"error": str(e)},
             )
+
+    @classmethod
+    def _parse_stack_c_config(cls, data: Dict[str, Any]) -> StackCConfig:
+        """
+        Parse Stack C configuration from dictionary.
+
+        Args:
+            data: Configuration dictionary for Stack C
+
+        Returns:
+            StackCConfig instance
+        """
+        providers_data = data.get("providers", {})
+        providers = {}
+
+        for provider_name, provider_data in providers_data.items():
+            rate_limit_data = provider_data.get("rate_limit")
+            retry_config_data = provider_data.get("retry_config")
+
+            rate_limit = None
+            if rate_limit_data:
+                rate_limit = RateLimitConfig(**rate_limit_data)
+
+            retry_config = None
+            if retry_config_data:
+                retry_config = RetryConfig(**retry_config_data)
+
+            providers[provider_name] = RemoteProviderConfig(
+                name=provider_data.get("name", provider_name),
+                base_url=provider_data.get("base_url", ""),
+                api_key_env=provider_data.get("api_key_env"),
+                model_mapping=provider_data.get("model_mapping", {}),
+                rate_limit=rate_limit,
+                timeout=provider_data.get("timeout", 120),
+                retry_config=retry_config,
+            )
+
+        cache_data = data.get("cache", {})
+        cache = CacheConfig(
+            enabled=cache_data.get("enabled", True),
+            backend=cache_data.get("backend", "memory"),
+            ttl_seconds=cache_data.get("ttl_seconds", 3600),
+            max_size=cache_data.get("max_size", 1000),
+            redis_url=cache_data.get("redis_url"),
+        )
+
+        api_key_manager_data = data.get("api_key_manager", {})
+        api_key_manager = APIKeyManagerConfig(
+            enabled=api_key_manager_data.get("enabled", True),
+            key_file=api_key_manager_data.get("key_file", ".glitchhunter/api_keys.enc"),
+            encryption_password_env=api_key_manager_data.get(
+                "encryption_password_env", "GLITCHHUNTER_MASTER_PASSWORD"
+            ),
+        )
+
+        return StackCConfig(
+            name=data.get("name", "stack_c"),
+            enabled=data.get("enabled", True),
+            providers=providers,
+            default_provider=data.get("default_provider", "ollama_lan"),
+            cache=cache,
+            api_key_manager=api_key_manager,
+            fallback_chain=data.get("fallback_chain", ["ollama_lan", "local_stack_a"]),
+        )
 
     def get_hardware_profile(self, stack_name: str) -> HardwareStackConfig:
         """
@@ -584,6 +778,61 @@ class Config:
                 "fallback_to_local": self.remote_inference.fallback_to_local,
                 "health_check_interval": self.remote_inference.health_check_interval,
                 "model_mapping": self.remote_inference.model_mapping,
+            },
+            "stack_c": self._stack_c_to_dict(),
+        }
+
+    def _stack_c_to_dict(self) -> Dict[str, Any]:
+        """
+        Convert Stack C configuration to dictionary.
+
+        Returns:
+            Dictionary representation of Stack C configuration
+        """
+        return {
+            "name": self.stack_c.name,
+            "enabled": self.stack_c.enabled,
+            "default_provider": self.stack_c.default_provider,
+            "fallback_chain": self.stack_c.fallback_chain,
+            "providers": {
+                name: {
+                    "name": provider.name,
+                    "base_url": provider.base_url,
+                    "api_key_env": provider.api_key_env,
+                    "model_mapping": provider.model_mapping,
+                    "timeout": provider.timeout,
+                    "rate_limit": {
+                        "enabled": provider.rate_limit.enabled,
+                        "requests_per_minute": provider.rate_limit.requests_per_minute,
+                        "tokens_per_minute": provider.rate_limit.tokens_per_minute,
+                        "burst_limit": provider.rate_limit.burst_limit,
+                    }
+                    if provider.rate_limit
+                    else None,
+                    "retry_config": {
+                        "enabled": provider.retry_config.enabled,
+                        "max_retries": provider.retry_config.max_retries,
+                        "initial_delay": provider.retry_config.initial_delay,
+                        "max_delay": provider.retry_config.max_delay,
+                        "exponential_base": provider.retry_config.exponential_base,
+                        "retry_on_status_codes": provider.retry_config.retry_on_status_codes,
+                    }
+                    if provider.retry_config
+                    else None,
+                }
+                for name, provider in self.stack_c.providers.items()
+            },
+            "cache": {
+                "enabled": self.stack_c.cache.enabled,
+                "backend": self.stack_c.cache.backend,
+                "ttl_seconds": self.stack_c.cache.ttl_seconds,
+                "max_size": self.stack_c.cache.max_size,
+                "redis_url": self.stack_c.cache.redis_url,
+            },
+            "api_key_manager": {
+                "enabled": self.stack_c.api_key_manager.enabled,
+                "key_file": self.stack_c.api_key_manager.key_file,
+                "encryption_password_env": self.stack_c.api_key_manager.encryption_password_env,
             },
         }
 

@@ -367,3 +367,146 @@ class SandboxError(GlitchHunterException):
             code="SANDBOX_ERROR",
             details=details,
         )
+
+
+class RemoteProviderError(GlitchHunterException):
+    """
+    Raised when remote provider operation fails.
+
+    Examples:
+        - Provider not configured
+        - Provider request failed
+        - Provider timeout
+        - Invalid provider response
+    """
+
+    def __init__(
+        self,
+        message: str,
+        provider_name: Optional[str] = None,
+        status_code: Optional[int] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        details = details or {}
+        if provider_name:
+            details["provider_name"] = provider_name
+        if status_code:
+            details["status_code"] = status_code
+        super().__init__(
+            message=message,
+            code="REMOTE_PROVIDER_ERROR",
+            details=details,
+        )
+
+
+class APIKeyError(GlitchHunterException):
+    """
+    Raised when API key management fails.
+
+    Examples:
+        - API key not found
+        - API key decryption failed
+        - Master password not set
+        - Key file corrupted
+    """
+
+    def __init__(
+        self,
+        message: str,
+        provider_name: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        details = details or {}
+        if provider_name:
+            details["provider_name"] = provider_name
+        super().__init__(
+            message=message,
+            code="API_KEY_ERROR",
+            details=details,
+        )
+
+
+class RateLimitExceededError(GlitchHunterException):
+    """
+    Raised when rate limit is exceeded.
+
+    Examples:
+        - Requests per minute exceeded
+        - Tokens per minute exceeded
+        - Burst limit reached
+    """
+
+    def __init__(
+        self,
+        message: str,
+        limit_type: Optional[str] = None,
+        retry_after: Optional[float] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        details = details or {}
+        if limit_type:
+            details["limit_type"] = limit_type
+        if retry_after:
+            details["retry_after"] = retry_after
+        super().__init__(
+            message=message,
+            code="RATE_LIMIT_EXCEEDED",
+            details=details,
+        )
+
+
+class CacheError(GlitchHunterException):
+    """
+    Raised when caching operation fails.
+
+    Examples:
+        - Cache backend unavailable
+        - Cache serialization failed
+        - Cache key not found
+        - Cache corruption detected
+    """
+
+    def __init__(
+        self,
+        message: str,
+        backend: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        details = details or {}
+        if backend:
+            details["backend"] = backend
+        super().__init__(
+            message=message,
+            code="CACHE_ERROR",
+            details=details,
+        )
+
+
+class ProviderConfigurationError(GlitchHunterException):
+    """
+    Raised when provider configuration is invalid.
+
+    Examples:
+        - Provider not found
+        - Missing required configuration
+        - Invalid provider settings
+        - Conflicting configuration
+    """
+
+    def __init__(
+        self,
+        message: str,
+        provider_name: Optional[str] = None,
+        field: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        details = details or {}
+        if provider_name:
+            details["provider_name"] = provider_name
+        if field:
+            details["field"] = field
+        super().__init__(
+            message=message,
+            code="PROVIDER_CONFIGURATION_ERROR",
+            details=details,
+        )

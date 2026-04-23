@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchHunter v3.0 - Problemlöser</title>
+    <link rel="stylesheet" href="/static/components/base.css">
+    <link rel="stylesheet" href="/static/components/icons.css">
+    <link rel="stylesheet" href="/static/problem.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <img src="/static/assets/logo/logo_256.png" alt="GlitchHunter Logo" class="header-logo">
+                    <div>
+                        <h1 class="header-title">🧠 Problemlöser</h1>
+                        <p class="header-subtitle">KI-gestützte Problemanalyse mit Live-Updates</p>
+                    </div>
+                </div>
+                <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Navigation öffnen">
+                    <svg class="mobile-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <nav class="header-nav" id="mainNav">
+                    <a href="/" class="nav-btn">
+                        <img src="/static/assets/nav/dashboard.png" alt="" class="nav-icon"> Dashboard
+                    </a>
+                    <a href="/problem.html" class="nav-btn active">
+                        <img src="/static/assets/nav/problem.png" alt="" class="nav-icon"> Problemlöser
+                    </a>
+                    <a href="/refactor.html" class="nav-btn">
+                        <img src="/static/assets/nav/refactor.png" alt="" class="nav-icon"> Refactoring
+                    </a>
+                    <a href="/reports.html" class="nav-btn">
+                        <img src="/static/assets/nav/reports.png" alt="" class="nav-icon"> Reports
+                    </a>
+                    <a href="/history.html" class="nav-btn">
+                        <img src="/static/assets/nav/history.png" alt="" class="nav-icon"> History
+                    </a>
+                    <a href="/settings.html" class="nav-btn">
+                        <img src="/static/assets/nav/settings.png" alt="" class="nav-icon"> Einstellungen
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Prompt Eingabe -->
+        <div class="card" id="promptCard">
+            <h2>📝 Problem beschreiben</h2>
+            <form id="promptForm" class="prompt-form">
+                <div class="form-group full-width">
+                    <label for="promptInput">Problembeschreibung:</label>
+                    <textarea 
+                        id="promptInput" 
+                        placeholder="Beschreiben Sie Ihr Problem in natürlichen Sprache.&#10;&#10;Beispiele:&#10;• 'Finde alle Security-Issues in auth.py'&#10;• 'Warum ist die API so langsam?'&#10;• 'Optimiere die Datenbankabfragen in user_service.py'"
+                        rows="8"
+                        required
+                    ></textarea>
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="repoPath">Repository Pfad (optional):</label>
+                    <input 
+                        type="text" 
+                        id="repoPath" 
+                        placeholder="/home/schaf/projects/glitchhunter"
+                    >
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Optionen:</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="withMlPrediction" checked>
+                            <span>🤖 ML Prediction</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="withCodeAnalysis" checked>
+                            <span>🔍 Code-Analyse</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="autoFix">
+                            <span>🔧 Auto-Fix (experimentell)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="stackSelect">Hardware Stack:</label>
+                    <select id="stackSelect">
+                        <option value="stack_a">Stack A (Standard)</option>
+                        <option value="stack_b" selected>Stack B (Enhanced)</option>
+                        <option value="stack_c">Stack C (Remote API)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-large">
+                    🚀 Problem analysieren
+                </button>
+            </form>
+        </div>
+
+        <!-- Live Status -->
+        <div class="card" id="statusCard" style="display: none;">
+            <h2>⏳ Analyse-Status</h2>
+            <div class="status-timeline">
+                <div class="timeline-step" id="step-intake">
+                    <div class="step-icon">📝</div>
+                    <div class="step-label">Erfassen</div>
+                    <div class="step-status">Ausstehend</div>
+                </div>
+                <div class="timeline-line"></div>
+                <div class="timeline-step" id="step-classify">
+                    <div class="step-icon">🏷️</div>
+                    <div class="step-label">Klassifizieren</div>
+                    <div class="step-status">Ausstehend</div>
+                </div>
+                <div class="timeline-line"></div>
+                <div class="timeline-step" id="step-diagnose">
+                    <div class="step-icon">🔬</div>
+                    <div class="step-label">Diagnose</div>
+                    <div class="step-status">Ausstehend</div>
+                </div>
+                <div class="timeline-line"></div>
+                <div class="timeline-step" id="step-plan">
+                    <div class="step-icon">📋</div>
+                    <div class="step-label">Plan</div>
+                    <div class="step-status">Ausstehend</div>
+                </div>
+                <div class="timeline-line"></div>
+                <div class="timeline-step" id="step-fix">
+                    <div class="step-icon">✅</div>
+                    <div class="step-label">Lösung</div>
+                    <div class="step-status">Ausstehend</div>
+                </div>
+            </div>
+
+            <div id="currentStatus" class="current-status">
+                <span class="status-indicator"></span>
+                <span id="statusText">Warte auf Start...</span>
+            </div>
+
+            <div id="progressLog" class="progress-log">
+                <!-- Live-Logs erscheinen hier -->
+            </div>
+        </div>
+
+        <!-- Ergebnis -->
+        <div class="card" id="resultCard" style="display: none;">
+            <h2>🎯 Ergebnis</h2>
+            
+            <div class="result-section">
+                <h3>🏷️ Klassifikation</h3>
+                <div id="resultClassification" class="result-content">
+                    -
+                </div>
+            </div>
+
+            <div class="result-section">
+                <h3>🔬 Diagnose</h3>
+                <div id="resultDiagnosis" class="result-content">
+                    -
+                </div>
+            </div>
+
+            <div class="result-section">
+                <h3>📋 Lösungsplan</h3>
+                <div id="resultPlan" class="result-content">
+                    -
+                </div>
+            </div>
+
+            <div class="result-section">
+                <h3>✅ Lösung</h3>
+                <div id="resultSolution" class="result-content">
+                    -
+                </div>
+            </div>
+
+            <div class="result-actions">
+                <button type="button" id="applySolutionBtn" class="btn btn-primary">
+                    💡 Lösung anwenden
+                </button>
+                <button type="button" id="newProblemBtn" class="btn btn-secondary">
+                    🔄 Neues Problem
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center text-muted text-sm py-6">
+        <p>GlitchHunter v3.0 • AI-powered Code Analysis</p>
+        <p class="mt-2">
+            <a href="http://asgard:3000" target="_blank" class="nav-btn">💬 OpenWebUI</a>
+            <a href="/docs" target="_blank" class="nav-btn">📚 API Docs</a>
+        </p>
+    </footer>
+</div>
+
+<script>
+    function toggleMobileNav() {
+        const nav = document.getElementById('mainNav');
+        nav.classList.toggle('active');
+    }
+    
+    document.addEventListener('click', function(event) {
+        const nav = document.getElementById('mainNav');
+        const toggle = document.querySelector('.mobile-nav-toggle');
+        
+        if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+            nav.classList.remove('active');
+        }
+    });
+</script>
+<script src="/static/problem.js"></script>
+</body>
+</html>

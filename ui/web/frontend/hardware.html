@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchHunter v3.0 - Hardware-Monitoring</title>
+    <link rel="stylesheet" href="/static/components/base.css">
+    <link rel="stylesheet" href="/static/components/icons.css">
+    <link rel="stylesheet" href="/static/hardware.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <img src="/static/assets/logo/logo_256.png" alt="GlitchHunter Logo" class="header-logo">
+                    <div>
+                        <h1 class="header-title">💻 Hardware-Monitoring</h1>
+                        <p class="header-subtitle">GPU, CPU, RAM in Echtzeit überwachen</p>
+                    </div>
+                </div>
+                <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Navigation öffnen">
+                    <svg class="mobile-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <nav class="header-nav" id="mainNav">
+                    <a href="/" class="nav-btn">
+                        <img src="/static/assets/nav/dashboard.png" alt="" class="nav-icon"> Dashboard
+                    </a>
+                    <a href="/problem.html" class="nav-btn">
+                        <img src="/static/assets/nav/problem.png" alt="" class="nav-icon"> Problemlöser
+                    </a>
+                    <a href="/refactor.html" class="nav-btn">
+                        <img src="/static/assets/nav/refactor.png" alt="" class="nav-icon"> Refactoring
+                    </a>
+                    <a href="/reports.html" class="nav-btn">
+                        <img src="/static/assets/nav/reports.png" alt="" class="nav-icon"> Reports
+                    </a>
+                    <a href="/history.html" class="nav-btn">
+                        <img src="/static/assets/nav/history.png" alt="" class="nav-icon"> History
+                    </a>
+                    <a href="/settings.html" class="nav-btn">
+                        <img src="/static/assets/nav/settings.png" alt="" class="nav-icon"> Einstellungen
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Alerts -->
+        <div id="alertsContainer" class="alerts-container"></div>
+
+        <!-- Hardware Cards -->
+        <div class="hardware-grid">
+            <!-- GPU -->
+            <div class="hardware-card gpu">
+                <div class="card-header">
+                    <h2>🎮 GPU</h2>
+                    <span class="status-indicator" id="gpuStatus">●</span>
+                </div>
+                <div class="card-body">
+                    <div class="hardware-name" id="gpuName">-</div>
+                    <div class="metric">
+                        <div class="metric-label">Auslastung</div>
+                        <div class="metric-bar">
+                            <div class="metric-fill" id="gpuUsageBar"></div>
+                        </div>
+                        <div class="metric-value" id="gpuUsage">0%</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">VRAM</div>
+                        <div class="metric-bar">
+                            <div class="metric-fill" id="gpuVramBar"></div>
+                        </div>
+                        <div class="metric-value" id="gpuVram">0 / 0 MB</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Temperatur</div>
+                        <div class="metric-value" id="gpuTemp">0°C</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Power</div>
+                        <div class="metric-value" id="gpuPower">0 W</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CPU -->
+            <div class="hardware-card cpu">
+                <div class="card-header">
+                    <h2>🖥️ CPU</h2>
+                    <span class="status-indicator ok">●</span>
+                </div>
+                <div class="card-body">
+                    <div class="hardware-name" id="cpuName">-</div>
+                    <div class="metric">
+                        <div class="metric-label">Auslastung</div>
+                        <div class="metric-bar">
+                            <div class="metric-fill" id="cpuUsageBar"></div>
+                        </div>
+                        <div class="metric-value" id="cpuUsage">0%</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Kerne</div>
+                        <div class="metric-value" id="cpuCores">0</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Temperatur</div>
+                        <div class="metric-value" id="cpuTemp">0°C</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Frequenz</div>
+                        <div class="metric-value" id="cpuFreq">0 MHz</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAM -->
+            <div class="hardware-card memory">
+                <div class="card-header">
+                    <h2>📦 RAM</h2>
+                    <span class="status-indicator ok">●</span>
+                </div>
+                <div class="card-body">
+                    <div class="metric">
+                        <div class="metric-label">Verbrauch</div>
+                        <div class="metric-bar">
+                            <div class="metric-fill" id="ramBar"></div>
+                        </div>
+                        <div class="metric-value" id="ramUsage">0 / 0 MB</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Prozent</div>
+                        <div class="metric-value" id="ramPercent">0%</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Swap</div>
+                        <div class="metric-value" id="swapUsage">0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Chart -->
+        <div class="card">
+            <h2>📈 Verlauf (5 Minuten)</h2>
+            <div class="chart-container">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center text-muted text-sm py-6">
+        <p>GlitchHunter v3.0 • AI-powered Code Analysis</p>
+        <p class="mt-2">
+            <a href="http://asgard:3000" target="_blank" class="nav-btn">💬 OpenWebUI</a>
+            <a href="/docs" target="_blank" class="nav-btn">📚 API Docs</a>
+        </p>
+    </footer>
+</div>
+
+<script>
+    function toggleMobileNav() {
+        const nav = document.getElementById('mainNav');
+        nav.classList.toggle('active');
+    }
+    
+    document.addEventListener('click', function(event) {
+        const nav = document.getElementById('mainNav');
+        const toggle = document.querySelector('.mobile-nav-toggle');
+        
+        if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+            nav.classList.remove('active');
+        }
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/hardware.js"></script>
+</body>
+</html>

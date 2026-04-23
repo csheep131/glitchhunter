@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchHunter v3.0 - History</title>
+    <link rel="stylesheet" href="/static/components/base.css">
+    <link rel="stylesheet" href="/static/components/icons.css">
+    <link rel="stylesheet" href="/static/history.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <img src="/static/assets/logo/logo_256.png" alt="GlitchHunter Logo" class="header-logo">
+                    <div>
+                        <h1 class="header-title">📜 History</h1>
+                        <p class="header-subtitle">Verlauf aller Analysen und Probleme</p>
+                    </div>
+                </div>
+                <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Navigation öffnen">
+                    <svg class="mobile-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <nav class="header-nav" id="mainNav">
+                    <a href="/" class="nav-btn">
+                        <img src="/static/assets/nav/dashboard.png" alt="" class="nav-icon"> Dashboard
+                    </a>
+                    <a href="/problem.html" class="nav-btn">
+                        <img src="/static/assets/nav/problem.png" alt="" class="nav-icon"> Problemlöser
+                    </a>
+                    <a href="/refactor.html" class="nav-btn">
+                        <img src="/static/assets/nav/refactor.png" alt="" class="nav-icon"> Refactoring
+                    </a>
+                    <a href="/reports.html" class="nav-btn">
+                        <img src="/static/assets/nav/reports.png" alt="" class="nav-icon"> Reports
+                    </a>
+                    <a href="/history.html" class="nav-btn active">
+                        <img src="/static/assets/nav/history.png" alt="" class="nav-icon"> History
+                    </a>
+                    <a href="/settings.html" class="nav-btn">
+                        <img src="/static/assets/nav/settings.png" alt="" class="nav-icon"> Einstellungen
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Statistics Overview -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="statTotalAnalyses">0</div>
+                <div class="stat-label">Analysen (30 Tage)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔍</div>
+                <div class="stat-value" id="statTotalFindings">0</div>
+                <div class="stat-label">Gefundene Issues</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-value" id="statAvgDuration">0s</div>
+                <div class="stat-label">Ø Analysezeit</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value" id="statSuccessRate">0%</div>
+                <div class="stat-label">Erfolgsrate</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="analysis">📊 Analysen</button>
+            <button class="tab-btn" data-tab="problems">🧠 Probleme</button>
+            <button class="tab-btn" data-tab="reports">📄 Reports</button>
+            <button class="tab-btn" data-tab="timeline">📈 Timeline</button>
+        </div>
+
+        <!-- Analysis History -->
+        <div class="tab-content active" id="analysis-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📊 Analyse-History</h2>
+                    <div class="card-actions">
+                        <button type="button" id="refreshAnalysisBtn" class="btn btn-small btn-secondary">
+                            🔄 Aktualisieren
+                        </button>
+                        <button type="button" id="cleanupOldBtn" class="btn btn-small btn-secondary">
+                            🗑️ Aufräumen
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label for="analysisStatusFilter">Status:</label>
+                        <select id="analysisStatusFilter">
+                            <option value="">Alle</option>
+                            <option value="completed">✅ Completed</option>
+                            <option value="running">⏳ Running</option>
+                            <option value="failed">❌ Failed</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="analysisRepoFilter">Repository:</label>
+                        <input type="text" id="analysisRepoFilter" placeholder="Filter...">
+                    </div>
+                </div>
+
+                <div id="analysisList" class="history-list">
+                    <!-- Wird dynamisch geladen -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Problem History -->
+        <div class="tab-content" id="problems-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>🧠 Problem-History</h2>
+                    <button type="button" id="refreshProblemsBtn" class="btn btn-small btn-secondary">
+                        🔄 Aktualisieren
+                    </button>
+                </div>
+
+                <div id="problemsList" class="history-list">
+                    <!-- Wird dynamisch geladen -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Report History -->
+        <div class="tab-content" id="reports-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📄 Report-History</h2>
+                    <button type="button" id="refreshReportsBtn" class="btn btn-small btn-secondary">
+                        🔄 Aktualisieren
+                    </button>
+                </div>
+
+                <div id="reportsList" class="history-list">
+                    <!-- Wird dynamisch geladen -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline View -->
+        <div class="tab-content" id="timeline-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📈 Zeitlicher Verlauf</h2>
+                    <div class="card-actions">
+                        <select id="timelineDays" class="btn btn-small">
+                            <option value="7">7 Tage</option>
+                            <option value="14">14 Tage</option>
+                            <option value="30" selected>30 Tage</option>
+                            <option value="90">90 Tage</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="timeline-chart">
+                    <canvas id="dailyStatsChart"></canvas>
+                </div>
+
+                <div id="timelineList" class="timeline-list">
+                    <!-- Wird dynamisch geladen -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center text-muted text-sm py-6">
+        <p>GlitchHunter v3.0 • AI-powered Code Analysis</p>
+        <p class="mt-2">
+            <a href="http://asgard:3000" target="_blank" class="nav-btn">💬 OpenWebUI</a>
+            <a href="/docs" target="_blank" class="nav-btn">📚 API Docs</a>
+        </p>
+    </footer>
+</div>
+
+<script>
+    function toggleMobileNav() {
+        const nav = document.getElementById('mainNav');
+        nav.classList.toggle('active');
+    }
+    
+    document.addEventListener('click', function(event) {
+        const nav = document.getElementById('mainNav');
+        const toggle = document.querySelector('.mobile-nav-toggle');
+        
+        if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+            nav.classList.remove('active');
+        }
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/history.js"></script>
+</body>
+</html>

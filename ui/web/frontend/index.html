@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchHunter v3.0 - Dashboard</title>
+    <link rel="stylesheet" href="/static/components/base.css">
+    <link rel="stylesheet" href="/static/components/icons.css">
+    <link rel="stylesheet" href="/static/components/hero.css">
+    <link rel="stylesheet" href="/static/custom-graphics.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <img src="/static/assets/logo/logo_256.png" alt="GlitchHunter Logo" class="header-logo">
+                    <div>
+                        <h1 class="header-title">GlitchHunter v3.0</h1>
+                        <p class="header-subtitle">AI-powered Code Analysis with Multi-Agent Swarm</p>
+                    </div>
+                </div>
+                <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Navigation öffnen">
+                    <svg class="mobile-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <nav class="header-nav" id="mainNav">
+                    <a href="/" class="nav-btn active">
+                        <img src="/static/assets/nav/dashboard.png" alt="" class="nav-icon"> Dashboard
+                    </a>
+                    <a href="/problem.html" class="nav-btn">
+                        <img src="/static/assets/nav/problem.png" alt="" class="nav-icon"> Problemlöser
+                    </a>
+                    <a href="/refactor.html" class="nav-btn">
+                        <img src="/static/assets/nav/refactor.png" alt="" class="nav-icon"> Refactoring
+                    </a>
+                    <a href="/reports.html" class="nav-btn">
+                        <img src="/static/assets/nav/reports.png" alt="" class="nav-icon"> Reports
+                    </a>
+                    <a href="/history.html" class="nav-btn">
+                        <img src="/static/assets/nav/history.png" alt="" class="nav-icon"> History
+                    </a>
+                    <a href="/settings.html" class="nav-btn">
+                        <img src="/static/assets/nav/settings.png" alt="" class="nav-icon"> Einstellungen
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Hero Banner -->
+        <div class="hero-section">
+            <img src="/static/assets/hero_banner.png" alt="GlitchHunter Dashboard" class="hero-image">
+            <div class="hero-overlay">
+                <h1 class="hero-title">GlitchHunter v3.0</h1>
+                <p class="hero-subtitle">AI-powered Code Analysis with Multi-Agent Swarm</p>
+            </div>
+        </div>
+
+        <!-- Hero Character -->
+        <div class="hero-character-container">
+            <img src="/static/assets/hero_character.png" alt="GlitchHunter" class="hero-character">
+        </div>
+
+        <!-- Decorative Divider -->
+        <img src="/static/assets/divider_gold.png" alt="" class="decorative-divider">
+
+        <!-- Stats Grid -->
+        <div class="grid grid-4 mb-6">
+            <div class="stat-card">
+                <img src="/static/assets/decorative/database.png" alt="" class="stat-icon">
+                <div class="stat-value" id="stat-jobs">0</div>
+                <div class="stat-label">Analyse-Jobs</div>
+            </div>
+            <div class="stat-card">
+                <img src="/static/assets/empty_states/bug_found.png" alt="" class="stat-icon">
+                <div class="stat-value" id="stat-findings">0</div>
+                <div class="stat-label">Gefundene Issues</div>
+            </div>
+            <div class="stat-card">
+                <img src="/static/assets/empty_states/error_alert.png" alt="" class="stat-icon">
+                <div class="stat-value" id="stat-critical">0</div>
+                <div class="stat-label">Kritische Issues</div>
+            </div>
+            <div class="stat-card">
+                <img src="/static/assets/decorative/performance_speed.png" alt="" class="stat-icon">
+                <div class="stat-value" id="stat-time">0s</div>
+                <div class="stat-label">Ø Analysezeit</div>
+            </div>
+        </div>
+
+        <!-- Decorative Divider -->
+        <img src="/static/assets/decorative/bifrost_divider.png" alt="" class="decorative-divider">
+
+        <!-- Feature Cards -->
+        <div class="grid grid-2 mb-6">
+            <div class="feature-card">
+                <img src="/static/assets/feature_swarm.png" alt="Multi-Agent Swarm" class="feature-card-image">
+                <div class="feature-card-content">
+                    <h3 class="feature-card-title">🤖 Multi-Agent Swarm</h3>
+                    <p class="feature-card-description">5 spezialisierte KI-Agenten arbeiten zusammen für umfassende Code-Analyse mit Evidence-basierter Entscheidungsfindung.</p>
+                </div>
+            </div>
+            <div class="feature-card">
+                <img src="/static/assets/feature_ml.png" alt="ML Prediction" class="feature-card-image">
+                <div class="feature-card-content">
+                    <h3 class="feature-card-title">🧠 ML Bug Prediction</h3>
+                    <p class="feature-card-description">32-dimensionale Feature-Extraction mit ONNX-Modell für vorhersage von Bugs mit erklärbaren Ergebnissen.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-2 mb-6">
+            <div class="feature-card">
+                <img src="/static/assets/feature_refactor.png" alt="Auto-Refactoring" class="feature-card-image">
+                <div class="feature-card-content">
+                    <h3 class="feature-card-title">🔧 Auto-Refactoring</h3>
+                    <p class="feature-card-description">Automatisches Code-Refactoring mit Git-Rollback, Code-Smell-Erkennung und Safety-Checks.</p>
+                </div>
+            </div>
+            <div class="feature-card">
+                <img src="/static/assets/feature_stacks.png" alt="Stack-Management" class="feature-card-image">
+                <div class="feature-card-content">
+                    <h3 class="feature-card-title">📚 Stack-Management</h3>
+                    <p class="feature-card-description">Verwaltung von Hardware-Stacks (A/B/C) mit Konfiguration, Testing und Remote-API-Integration.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decorative Divider -->
+        <img src="/static/assets/divider_green.png" alt="" class="decorative-divider">
+
+        <!-- Analyse Formular -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">🚀 Neue Analyse starten</h2>
+            </div>
+            <div class="card-body">
+                <form id="analyzeForm">
+                    <div class="form-group">
+                        <label class="form-label" for="repoPath">📁 Repository Pfad</label>
+                        <input
+                            type="text"
+                            id="repoPath"
+                            class="form-input"
+                            placeholder="/home/schaf/projects/glitchhunter"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">⚙️ Optionen</label>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-inline">
+                                <input type="checkbox" id="useParallel" checked>
+                                <span>Parallele Analyse</span>
+                            </label>
+                            <label class="checkbox-inline">
+                                <input type="checkbox" id="enableMl" checked>
+                                <span>ML Prediction</span>
+                            </label>
+                            <label class="checkbox-inline">
+                                <input type="checkbox" id="enableRefactor">
+                                <span>Auto-Refactoring</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="stackSelect">🚀 Hardware Stack</label>
+                        <select id="stackSelect" class="form-select">
+                            <option value="stack_a">📦 Stack A (Standard) - GTX 3060 (8GB)</option>
+                            <option value="stack_b" selected>⚡ Stack B (Enhanced) - RTX 3090 (24GB) - Empfohlen</option>
+                            <option value="stack_c">🌐 Stack C (Remote API) - Cloud/LAN Modelle</option>
+                        </select>
+                        <p class="form-help">
+                            <strong>Stack A:</strong> Sequenzielle Analyse, lokal •
+                            <strong>Stack B:</strong> Parallele Analyse, lokal, schnellste Option •
+                            <strong>Stack C:</strong> Remote APIs (Ollama LAN, OpenAI, Anthropic)
+                        </p>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg" id="analyzeBtn">
+                        🚀 Analyse starten
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card" id="currentJobCard" style="display: none;">
+            <h2 style="margin-bottom: 20px;">Aktuelle Analyse</h2>
+            <p id="currentJobPath" style="margin-bottom: 10px; color: #666;"></p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p style="margin-top: 10px;">
+                Status: <span class="status-badge status-pending" id="statusBadge">pending</span>
+            </p>
+        </div>
+
+        <!-- Filter & Sortierung Toolbar -->
+        <div class="card" id="filterCard" style="display: none;">
+            <h2 style="margin-bottom: 20px;">🔍 Filter & Sortierung</h2>
+            <div class="filter-toolbar">
+                <div class="filter-group">
+                    <label for="severityFilter">Severity:</label>
+                    <select id="severityFilter">
+                        <option value="all">Alle</option>
+                        <option value="critical">🔴 Critical</option>
+                        <option value="high">🟠 High</option>
+                        <option value="medium">🟡 Medium</option>
+                        <option value="low">🟢 Low</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="categoryFilter">Kategorie:</label>
+                    <select id="categoryFilter">
+                        <option value="all">Alle</option>
+                        <option value="security">Security</option>
+                        <option value="performance">Performance</option>
+                        <option value="correctness">Correctness</option>
+                        <option value="runtime">Runtime</option>
+                        <option value="ml_prediction">ML Prediction</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="sortSelect">Sortieren nach:</label>
+                    <select id="sortSelect">
+                        <option value="severity">Severity (aufsteigend)</option>
+                        <option value="severity_desc">Severity (absteigend)</option>
+                        <option value="confidence">Confidence</option>
+                        <option value="file">Datei (A-Z)</option>
+                        <option value="line">Zeile</option>
+                    </select>
+                </div>
+
+                <div class="filter-actions">
+                    <button type="button" id="applyFilterBtn" class="btn btn-small">Anwenden</button>
+                    <button type="button" id="resetFilterBtn" class="btn btn-small btn-secondary">Zurücksetzen</button>
+                    <span id="resultCount" class="result-count">0 findings</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ergebnisse -->
+        <div class="card" id="resultsCard" style="display: none;">
+            <h2 style="margin-bottom: 20px;">📋 Ergebnisse</h2>
+            <ul class="findings-list" id="findingsList">
+                <li style="padding: 20px; text-align: center; color: #6b7280;">
+                    Noch keine Ergebnisse verfügbar
+                </li>
+            </ul>
+            <div id="exportSection" style="margin-top: 20px; display: none;">
+                <button type="button" id="exportJsonBtn" class="btn btn-small">📄 JSON Export</button>
+                <button type="button" id="exportMarkdownBtn" class="btn btn-small">📝 Markdown Export</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentJobId = null;
+        let websocket = null;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 5;
+        const RECONNECT_DELAY_MS = 2000;
+        let isAnalysisRunning = false;
+        let currentFindings = []; // Alle geladenen Findings
+        let filteredFindings = []; // Gefilterte Findings
+
+        // Filter & Sortierung initialisieren
+        function initFilters() {
+            document.getElementById('applyFilterBtn')?.addEventListener('click', applyFilters);
+            document.getElementById('resetFilterBtn')?.addEventListener('click', resetFilters);
+            document.getElementById('exportJsonBtn')?.addEventListener('click', exportJson);
+            document.getElementById('exportMarkdownBtn')?.addEventListener('click', exportMarkdown);
+        }
+
+        function applyFilters() {
+            const severity = document.getElementById('severityFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+            const sort = document.getElementById('sortSelect').value;
+
+            console.log('[Filter] Wende Filter an:', { severity, category, sort });
+
+            // Filtern
+            filteredFindings = currentFindings.filter(f => {
+                const severityMatch = severity === 'all' || f.severity === severity;
+                const categoryMatch = category === 'all' || f.category === category;
+                return severityMatch && categoryMatch;
+            });
+
+            // Sortieren
+            filteredFindings.sort((a, b) => {
+                switch (sort) {
+                    case 'severity':
+                        return ['critical', 'high', 'medium', 'low'].indexOf(a.severity) - 
+                               ['critical', 'high', 'medium', 'low'].indexOf(b.severity);
+                    case 'severity_desc':
+                        return ['critical', 'high', 'medium', 'low'].indexOf(b.severity) - 
+                               ['critical', 'high', 'medium', 'low'].indexOf(a.severity);
+                    case 'confidence':
+                        return (b.confidence || 0) - (a.confidence || 0);
+                    case 'file':
+                        return (a.file_path || '').localeCompare(b.file_path || '');
+                    case 'line':
+                        return (a.line_start || 0) - (b.line_start || 0);
+                    default:
+                        return 0;
+                }
+            });
+
+            renderFindings(filteredFindings);
+            updateResultCount();
+        }
+
+        function resetFilters() {
+            document.getElementById('severityFilter').value = 'all';
+            document.getElementById('categoryFilter').value = 'all';
+            document.getElementById('sortSelect').value = 'severity';
+            filteredFindings = [...currentFindings];
+            renderFindings(filteredFindings);
+            updateResultCount();
+        }
+
+        function renderFindings(findings) {
+            const list = document.getElementById('findingsList');
+            if (!list) return;
+
+            if (!findings || findings.length === 0) {
+                list.innerHTML = '<li style="padding: 20px; text-align: center; color: #6b7280;">Keine Findings gefunden</li>';
+                return;
+            }
+
+            list.innerHTML = findings.map(f => `
+                <li class="finding-item ${f.severity}">
+                    <div class="finding-header">
+                        <span class="finding-title">${escapeHtml(f.title || 'Unknown')}</span>
+                        <span class="finding-severity severity-${f.severity}">${f.severity}</span>
+                    </div>
+                    <div class="finding-meta">
+                        📁 ${escapeHtml(f.file_path || 'unknown')}:${f.line_start || 0}
+                        | 🎯 Konfidenz: ${((f.confidence || 0) * 100).toFixed(0)}%
+                    </div>
+                    <div class="finding-description">${escapeHtml(f.description || '')}</div>
+                    <div class="finding-actions">
+                        ${f.exploit_ready ? '<button class="btn btn-small">🔍 Exploit ansehen</button>' : ''}
+                        ${f.fix_suggestion ? '<button class="btn btn-small">🔧 Fix anwenden</button>' : ''}
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        function updateResultCount() {
+            const el = document.getElementById('resultCount');
+            if (el) {
+                el.textContent = `${filteredFindings.length} findings`;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function exportJson() {
+            const dataStr = JSON.stringify(filteredFindings, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `glitchhunter-results-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportMarkdown() {
+            let md = `# GlitchHunter Results - ${new Date().toLocaleDateString()}\n\n`;
+            md += `**Total Findings:** ${filteredFindings.length}\n\n`;
+            md += `## Summary\n\n`;
+            md += `- Critical: ${filteredFindings.filter(f => f.severity === 'critical').length}\n`;
+            md += `- High: ${filteredFindings.filter(f => f.severity === 'high').length}\n`;
+            md += `- Medium: ${filteredFindings.filter(f => f.severity === 'medium').length}\n`;
+            md += `- Low: ${filteredFindings.filter(f => f.severity === 'low').length}\n\n`;
+            md += `## Findings\n\n`;
+            
+            filteredFindings.forEach((f, i) => {
+                md += `### ${i + 1}. ${f.title || 'Unknown'}\n\n`;
+                md += `**Severity:** ${f.severity} | **Confidence:** ${((f.confidence || 0) * 100).toFixed(0)}%\n\n`;
+                md += `**File:** ${f.file_path || 'unknown'}:${f.line_start || 0}\n\n`;
+                md += `${f.description || ''}\n\n`;
+                md += `---\n\n`;
+            });
+
+            const blob = new Blob([md], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `glitchhunter-results-${new Date().toISOString().split('T')[0]}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Filter-Handler beim Laden initialisieren
+        document.addEventListener('DOMContentLoaded', initFilters);
+
+        document.getElementById('analyzeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const repoPath = document.getElementById('repoPath').value;
+            const useParallel = document.getElementById('useParallel').checked;
+            const enableMl = document.getElementById('enableMl').checked;
+            const enableRefactor = document.getElementById('enableRefactor').checked;
+
+            await startAnalysis(repoPath, useParallel, enableMl, enableRefactor);
+        });
+
+        async function startAnalysis(repoPath, useParallel, enableMl, enableRefactor) {
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Starte Analyse...';
+            isAnalysisRunning = true;
+
+            // Stack aus Select holen
+            const stack = document.getElementById('stackSelect').value;
+            console.log('[UI] Verwende Stack:', stack);
+
+            try {
+                console.log('[API] Sende Analyse-Request...');
+                const response = await fetch('/api/v1/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        repo_path: repoPath,
+                        use_parallel: useParallel,
+                        enable_ml_prediction: enableMl,
+                        enable_auto_refactor: enableRefactor,
+                        max_workers: 4,
+                        stack: stack,  // Stack an Backend senden
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('[API] Analyse gestartet, Job-ID:', data.job_id);
+                
+                currentJobId = data.job_id;
+
+                // UI aktualisieren
+                document.getElementById('currentJobCard').style.display = 'block';
+                document.getElementById('currentJobPath').textContent = repoPath;
+                updateStatus('pending');
+                document.getElementById('progressFill').style.width = '10%';
+
+                // WebSocket sofort nach Job-Erstellung verbinden
+                connectWebSocket(data.job_id);
+                await loadJobs();
+
+            } catch (error) {
+                console.error('[ERROR] Analyse-Request fehlgeschlagen:', error);
+                alert('Fehler beim Starten der Analyse: ' + error.message);
+                btn.disabled = false;
+                btn.textContent = '🚀 Analyse starten';
+                isAnalysisRunning = false;
+            }
+        }
+
+        function connectWebSocket(jobId) {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/results/${jobId}`;
+            
+            console.log('[WebSocket] Verbinde mit:', wsUrl);
+            websocket = new WebSocket(wsUrl);
+
+            websocket.onopen = () => {
+                console.log('[WebSocket] Verbunden');
+                reconnectAttempts = 0;
+                updateConnectionStatus('connected');
+                
+                // Status auf running setzen wenn WebSocket offen ist
+                if (isAnalysisRunning) {
+                    updateStatus('running');
+                    document.getElementById('progressFill').style.width = '50%';
+                }
+            };
+
+            websocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('[WebSocket] Nachricht empfangen:', data);
+
+                    if (data.type === 'status') {
+                        updateStatus(data.status);
+                        if (data.status === 'running') {
+                            document.getElementById('progressFill').style.width = '50%';
+                        }
+                    } else if (data.type === 'complete') {
+                        handleAnalysisComplete(data);
+                    } else if (data.type === 'error') {
+                        handleAnalysisError(data);
+                    }
+                } catch (parseError) {
+                    console.error('[WebSocket] Fehler beim Parsen der Nachricht:', parseError, event.data);
+                }
+            };
+
+            websocket.onerror = (error) => {
+                console.error('[WebSocket] Fehler:', error);
+                updateConnectionStatus('error');
+            };
+
+            websocket.onclose = (event) => {
+                console.log('[WebSocket] Getrennt, Code:', event.code, 'Reason:', event.reason || 'keine Angabe');
+                updateConnectionStatus('disconnected');
+                
+                // Automatisch wiederverbinden wenn Analyse noch läuft
+                if (isAnalysisRunning && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    reconnectAttempts++;
+                    console.log(`[WebSocket] Versuch ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_DELAY_MS}ms...`);
+                    
+                    setTimeout(() => {
+                        if (currentJobId && isAnalysisRunning) {
+                            console.log('[WebSocket] Reconnect...');
+                            connectWebSocket(currentJobId);
+                        }
+                    }, RECONNECT_DELAY_MS);
+                } else if (isAnalysisRunning && reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                    console.error('[WebSocket] Maximale Reconnect-Versuche erreicht');
+                    alert('WebSocket-Verbindung fehlgeschlagen. Bitte laden Sie die Seite neu.');
+                }
+            };
+
+            // Keep-Alive: Ping alle 30 Sekunden
+            setInterval(() => {
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.send('ping');
+                    console.debug('[WebSocket] Keep-Alive Ping gesendet');
+                }
+            }, 30000);
+        }
+
+        function handleAnalysisComplete(data) {
+            console.log('[WebSocket] Analyse abgeschlossen:', data);
+            updateStatus('completed');
+            document.getElementById('progressFill').style.width = '100%';
+            document.getElementById('stat-findings').textContent = data.findings_count || '0';
+
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = false;
+            btn.textContent = '🚀 Analyse starten';
+            isAnalysisRunning = false;
+
+            // Ergebnisse laden und anzeigen
+            if (currentJobId) {
+                loadResults(currentJobId);
+            }
+
+            // Jobs neu laden
+            loadJobs();
+
+            // Erfolgsmeldung
+            console.log(`[Analyse] Erfolgreich abgeschlossen: ${data.findings_count} Findings in ${data.execution_time?.toFixed(2) || '0'}s`);
+        }
+
+        async function loadResults(jobId) {
+            try {
+                console.log('[API] Lade Ergebnisse für Job:', jobId);
+                const response = await fetch(`/api/v1/results/${jobId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('[API] Ergebnisse geladen:', data);
+
+                // Findings speichern
+                currentFindings = data.findings || [];
+                filteredFindings = [...currentFindings];
+
+                // UI aktualisieren
+                document.getElementById('filterCard').style.display = 'block';
+                document.getElementById('resultsCard').style.display = 'block';
+                document.getElementById('exportSection').style.display = 'block';
+
+                // Findings anzeigen
+                renderFindings(filteredFindings);
+                updateResultCount();
+
+                // Stats aktualisieren
+                document.getElementById('stat-time').textContent = (data.execution_time || 0).toFixed(1) + 's';
+
+            } catch (error) {
+                console.error('[ERROR] Ergebnisse laden fehlgeschlagen:', error);
+            }
+        }
+
+        function handleAnalysisError(data) {
+            console.error('[WebSocket] Analyse fehlgeschlagen:', data);
+            updateStatus('failed');
+            
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = false;
+            btn.textContent = '🚀 Analyse starten';
+            isAnalysisRunning = false;
+
+            // Fehlermeldung anzeigen
+            const errorMsg = data.error_type ? `${data.error_type}: ${data.error}` : data.error;
+            alert('Analyse fehlgeschlagen: ' + errorMsg);
+            console.error('[Analyse] Fehlerdetails:', data);
+        }
+
+        function updateStatus(status) {
+            const badge = document.getElementById('statusBadge');
+            if (badge) {
+                badge.textContent = status;
+                badge.className = 'status-badge status-' + status;
+            }
+            console.log('[UI] Status aktualisiert:', status);
+        }
+
+        function updateConnectionStatus(status) {
+            // Visuelles Feedback für WebSocket-Status (optional in der UI erweiterbar)
+            console.log('[UI] WebSocket-Status:', status);
+        }
+
+        async function loadJobs() {
+            try {
+                const response = await fetch('/api/v1/jobs');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data = await response.json();
+                document.getElementById('stat-jobs').textContent = data.jobs.length;
+                console.log('[UI] Jobs geladen:', data.jobs.length);
+            } catch (error) {
+                console.error('[ERROR] Jobs laden fehlgeschlagen:', error);
+            }
+        }
+
+        // Initiales Laden der Jobs
+        loadJobs();
+    </script>
+    
+    <!-- Footer -->
+    <footer class="text-center text-muted text-sm py-6">
+        <p>GlitchHunter v3.0 • AI-powered Code Analysis</p>
+        <p class="mt-2">
+            <a href="http://asgard:3000" target="_blank" class="nav-btn">💬 OpenWebUI</a>
+            <a href="/docs" target="_blank" class="nav-btn">📚 API Docs</a>
+        </p>
+    </footer>
+</div>
+
+<script>
+    function toggleMobileNav() {
+        const nav = document.getElementById('mainNav');
+        nav.classList.toggle('active');
+    }
+    
+    // Close mobile nav when clicking outside
+    document.addEventListener('click', function(event) {
+        const nav = document.getElementById('mainNav');
+        const toggle = document.querySelector('.mobile-nav-toggle');
+        
+        if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+            nav.classList.remove('active');
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchHunter v3.0 - Stack-Testing</title>
+    <link rel="stylesheet" href="/static/components/base.css">
+    <link rel="stylesheet" href="/static/components/icons.css">
+    <link rel="stylesheet" href="/static/testing.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <img src="/static/assets/logo/logo_256.png" alt="GlitchHunter Logo" class="header-logo">
+                    <div>
+                        <h1 class="header-title">🧪 Stack-Testing</h1>
+                        <p class="header-subtitle">Hardware-Stacks testen und validieren</p>
+                    </div>
+                </div>
+                <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Navigation öffnen">
+                    <svg class="mobile-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <nav class="header-nav" id="mainNav">
+                    <a href="/" class="nav-btn">
+                        <img src="/static/assets/nav/dashboard.png" alt="" class="nav-icon"> Dashboard
+                    </a>
+                    <a href="/problem.html" class="nav-btn">
+                        <img src="/static/assets/nav/problem.png" alt="" class="nav-icon"> Problemlöser
+                    </a>
+                    <a href="/refactor.html" class="nav-btn">
+                        <img src="/static/assets/nav/refactor.png" alt="" class="nav-icon"> Refactoring
+                    </a>
+                    <a href="/reports.html" class="nav-btn">
+                        <img src="/static/assets/nav/reports.png" alt="" class="nav-icon"> Reports
+                    </a>
+                    <a href="/history.html" class="nav-btn">
+                        <img src="/static/assets/nav/history.png" alt="" class="nav-icon"> History
+                    </a>
+                    <a href="/settings.html" class="nav-btn">
+                        <img src="/static/assets/nav/settings.png" alt="" class="nav-icon"> Einstellungen
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Test Selection -->
+        <div class="card" id="testSelectionCard">
+            <h2>🧪 Neuen Test starten</h2>
+            <form id="testForm" class="test-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="stackSelect">Stack auswählen:</label>
+                        <select id="stackSelect" required>
+                            <option value="stack_a">📦 Stack A (Standard)</option>
+                            <option value="stack_b" selected>⚡ Stack B (Enhanced)</option>
+                            <option value="stack_c">🌐 Stack C (Remote API)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="testTypeSelect">Test-Typ:</label>
+                        <select id="testTypeSelect" required>
+                            <option value="quick">⚡ Quick-Test (~30s)</option>
+                            <option value="performance">📊 Performance-Test (2-5 min)</option>
+                            <option value="stress">🔥 Stress-Test (10-20 min)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-large">
+                    🚀 Test starten
+                </button>
+            </form>
+        </div>
+
+        <!-- Running Test -->
+        <div class="card" id="runningTestCard" style="display: none;">
+            <h2>⏳ Laufender Test</h2>
+            <div class="test-progress-container">
+                <div class="progress-bar-large">
+                    <div class="progress-fill-large" id="testProgressFill"></div>
+                </div>
+                <p id="testProgressText" class="progress-text">Test initialisiert...</p>
+                <div class="test-info">
+                    <div class="info-badge">
+                        <span class="info-label">Stack:</span>
+                        <span class="info-value" id="runningStack">-</span>
+                    </div>
+                    <div class="info-badge">
+                        <span class="info-label">Typ:</span>
+                        <span class="info-value" id="runningType">-</span>
+                    </div>
+                    <div class="info-badge">
+                        <span class="info-label">Dauer:</span>
+                        <span class="info-value" id="runningDuration">0s</span>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="testingManager.cancelTest()">
+                    ❌ Test abbrechen
+                </button>
+            </div>
+        </div>
+
+        <!-- Test Results -->
+        <div class="card" id="resultsCard" style="display: none;">
+            <h2>✅ Test-Ergebnis</h2>
+            <div class="result-header">
+                <div class="result-badge" id="resultStatus">Completed</div>
+                <div class="result-meta">
+                    <span>📁 <span id="resultStack">Stack B</span></span>
+                    <span>🧪 <span id="resultType">Performance</span></span>
+                    <span>⏱️ <span id="resultDuration">145.5s</span></span>
+                </div>
+            </div>
+
+            <div class="result-section">
+                <h3>📊 Performance-Metriken</h3>
+                <div class="metrics-grid" id="metricsGrid">
+                    <!-- Wird dynamisch gefüllt -->
+                </div>
+            </div>
+
+            <div class="result-section">
+                <h3>💡 Empfehlung</h3>
+                <div class="recommendation-box" id="recommendationBox">
+                    <!-- Wird dynamisch gefüllt -->
+                </div>
+            </div>
+
+            <div class="result-actions">
+                <button type="button" class="btn btn-primary" onclick="testingManager.exportResults()">
+                    📄 Exportieren
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="testingManager.runAnotherTest()">
+                    🔄 Weiterer Test
+                </button>
+            </div>
+        </div>
+
+        <!-- Test History -->
+        <div class="card" id="historyCard">
+            <h2>📜 Test-Historie</h2>
+            <div class="history-filters">
+                <div class="filter-group">
+                    <label for="historyStackFilter">Stack:</label>
+                    <select id="historyStackFilter">
+                        <option value="">Alle</option>
+                        <option value="stack_a">Stack A</option>
+                        <option value="stack_b">Stack B</option>
+                        <option value="stack_c">Stack C</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="historyTypeFilter">Typ:</label>
+                    <select id="historyTypeFilter">
+                        <option value="">Alle</option>
+                        <option value="quick">Quick-Test</option>
+                        <option value="performance">Performance-Test</option>
+                        <option value="stress">Stress-Test</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-small" onclick="testingManager.loadHistory()">
+                    🔄 Aktualisieren
+                </button>
+            </div>
+
+            <div class="history-list" id="historyList">
+                <!-- Wird dynamisch geladen -->
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center text-muted text-sm py-6">
+        <p>GlitchHunter v3.0 • AI-powered Code Analysis</p>
+        <p class="mt-2">
+            <a href="http://asgard:3000" target="_blank" class="nav-btn">💬 OpenWebUI</a>
+            <a href="/docs" target="_blank" class="nav-btn">📚 API Docs</a>
+        </p>
+    </footer>
+</div>
+
+<script>
+    function toggleMobileNav() {
+        const nav = document.getElementById('mainNav');
+        nav.classList.toggle('active');
+    }
+    
+    document.addEventListener('click', function(event) {
+        const nav = document.getElementById('mainNav');
+        const toggle = document.querySelector('.mobile-nav-toggle');
+        
+        if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+            nav.classList.remove('active');
+        }
+    });
+</script>
+<script src="/static/testing.js"></script>
+</body>
+</html>

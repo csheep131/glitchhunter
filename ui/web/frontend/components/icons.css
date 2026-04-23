@@ -1,0 +1,505 @@
+/**
+ * GlitchHunter v3.0 - Icon System
+ * Nordic Cyber Security Design
+ * 
+ * Verwendung: <link rel="stylesheet" href="/static/components/icons.css">
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ICON BASIS-KLASSEN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.icon {
+    display: inline-block;
+    width: var(--icon-md);
+    height: var(--icon-md);
+    object-fit: contain;
+    flex-shrink: 0;
+    /* Drop-Shadow für Tiefe */
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    /* Smooth Transitions */
+    transition: transform var(--transition-base), filter var(--transition-base);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ICON GRÖSSEN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.icon-xs {
+    width: var(--icon-xs);
+    height: var(--icon-xs);
+}
+
+.icon-sm {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+}
+
+.icon-md {
+    width: var(--icon-md);
+    height: var(--icon-md);
+}
+
+.icon-lg {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+}
+
+.icon-xl {
+    width: var(--icon-xl);
+    height: var(--icon-xl);
+}
+
+.icon-2xl {
+    width: var(--icon-2xl);
+    height: var(--icon-2xl);
+}
+
+.icon-3xl {
+    width: var(--icon-3xl);
+    height: var(--icon-3xl);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NAVIGATION ICONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.nav-icon {
+    width: var(--icon-md);
+    height: var(--icon-md);
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    transition: transform var(--transition-base), filter var(--transition-base);
+}
+
+/* Hover-Effekt für Navigation Buttons */
+.nav-btn:hover .nav-icon {
+    transform: scale(1.1) translateY(-2px);
+    filter: drop-shadow(0 4px 8px rgba(212, 196, 168, 0.3));
+}
+
+/* Active State */
+.nav-btn.active .nav-icon {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)) brightness(1.1);
+}
+
+/* Mobile Navigation */
+.mobile-nav-icon {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATUS ICONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.status-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    object-fit: contain;
+    /* Pulsing Animation für Online-Status */
+    animation: status-pulse 2s ease-in-out infinite;
+}
+
+.status-icon-lg {
+    width: 32px;
+    height: 32px;
+}
+
+@keyframes status-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.05);
+    }
+}
+
+/* Status-spezifische Farben (falls SVG verwendet wird) */
+.status-icon.online {
+    filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.5));
+}
+
+.status-icon.offline {
+    filter: grayscale(100%) opacity(0.5);
+    animation: none;
+}
+
+.status-icon.error {
+    filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5));
+    animation: status-error-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes status-error-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.1);
+    }
+}
+
+.status-icon.warning {
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.5));
+    animation: status-warning-pulse 1s ease-in-out infinite;
+}
+
+@keyframes status-warning-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STAT CARD ICONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.stat-card .icon {
+    width: var(--icon-xl);
+    height: var(--icon-xl);
+    margin-bottom: var(--spacing-3);
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+}
+
+.stat-card:hover .icon {
+    transform: scale(1.15) translateY(-4px);
+    filter: drop-shadow(0 8px 16px rgba(212, 196, 168, 0.4));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FEATURE ICONS (in Cards)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.feature-icon {
+    width: var(--icon-2xl);
+    height: var(--icon-2xl);
+    margin-bottom: var(--spacing-4);
+    object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+    transition: transform var(--transition-base), filter var(--transition-base);
+}
+
+.feature-card:hover .feature-icon {
+    transform: scale(1.1) translateY(-4px);
+    filter: drop-shadow(0 8px 16px rgba(212, 196, 168, 0.3));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING SPINNER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.loading-spinner {
+    width: var(--icon-2xl);
+    height: var(--icon-2xl);
+    animation: spin 1s linear infinite;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.loading-spinner-sm {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+    animation: spin 0.8s linear infinite;
+}
+
+.loading-spinner-lg {
+    width: var(--icon-3xl);
+    height: var(--icon-3xl);
+    animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EMPTY STATE IMAGES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.empty-state-image {
+    width: 128px;
+    height: 128px;
+    margin: var(--spacing-6) auto;
+    object-fit: contain;
+    opacity: 0.6;
+    filter: grayscale(30%);
+    transition: opacity var(--transition-base), filter var(--transition-base);
+}
+
+.empty-state-image:hover {
+    opacity: 0.8;
+    filter: grayscale(0%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DECORATIVE ELEMENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Yggdrasil Banner */
+.yggdrasil-banner {
+    width: 100%;
+    max-width: 1200px;
+    height: 300px;
+    object-fit: cover;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    margin-bottom: var(--spacing-6);
+}
+
+/* Bifrost Divider */
+.bifrost-divider {
+    width: 100%;
+    max-width: 800px;
+    height: 100px;
+    object-fit: cover;
+    margin: var(--spacing-8) auto;
+    border-radius: var(--radius-lg);
+    opacity: 0.8;
+}
+
+/* Circuit Board Background Pattern */
+.circuit-pattern-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('/static/assets/decorative/circuit_board.png');
+    background-size: 512px;
+    background-position: center;
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOGO VARIANTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.logo-small {
+    width: var(--icon-2xl);
+    height: var(--icon-2xl);
+    object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+}
+
+.logo-medium {
+    width: 128px;
+    height: 128px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
+}
+
+.logo-large {
+    width: 256px;
+    height: 256px;
+    object-fit: contain;
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25));
+}
+
+/* Header Logo */
+.header-logo {
+    width: var(--icon-2xl);
+    height: var(--icon-2xl);
+    object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+    transition: transform var(--transition-base);
+}
+
+.header-brand:hover .header-logo {
+    transform: scale(1.05);
+    filter: drop-shadow(0 6px 12px rgba(212, 196, 168, 0.3));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTON ICONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.btn .icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex-shrink: 0;
+}
+
+.btn-lg .icon {
+    width: var(--icon-md);
+    height: var(--icon-md);
+}
+
+.btn-sm .icon {
+    width: var(--icon-xs);
+    height: var(--icon-xs);
+}
+
+/* Icon-Only Button */
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-2);
+    min-width: 40px;
+    min-height: 40px;
+}
+
+.btn-icon .icon {
+    width: var(--icon-md);
+    height: var(--icon-md);
+}
+
+.btn-icon:hover .icon {
+    transform: scale(1.15);
+    filter: drop-shadow(0 4px 8px rgba(212, 196, 168, 0.3));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BADGE ICONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.badge-icon {
+    width: 14px;
+    height: 14px;
+    margin-right: var(--spacing-1);
+    vertical-align: middle;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUCCESS / ERROR ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.success-icon {
+    width: var(--icon-2xl);
+    height: var(--icon-2xl);
+    margin: var(--spacing-4) auto;
+    animation: success-bounce 0.5s ease-in-out;
+}
+
+@keyframes success-bounce {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+}
+
+.error-icon {
+    width: var(--icon-2xl);
+    height: var(--icon-2xl);
+    margin: var(--spacing-4) auto;
+    animation: error-shake 0.5s ease-in-out;
+}
+
+@keyframes error-shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-8px);
+    }
+    75% {
+        transform: translateX(8px);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE ANPASSUNGEN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Tablet: 768px - 1024px */
+@media (max-width: 1024px) {
+    .nav-icon {
+        width: var(--icon-sm);
+        height: var(--icon-sm);
+    }
+}
+
+/* Mobile: < 768px */
+@media (max-width: 768px) {
+    .icon {
+        width: var(--icon-sm);
+        height: var(--icon-sm);
+    }
+
+    .icon-lg {
+        width: var(--icon-md);
+        height: var(--icon-md);
+    }
+
+    .icon-xl {
+        width: var(--icon-lg);
+        height: var(--icon-lg);
+    }
+
+    .icon-2xl {
+        width: var(--icon-xl);
+        height: var(--icon-xl);
+    }
+
+    .header-logo {
+        width: var(--icon-xl);
+        height: var(--icon-xl);
+    }
+
+    .stat-card .icon {
+        width: var(--icon-lg);
+        height: var(--icon-lg);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK MODE UNTERSTÜTZUNG
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-color-scheme: dark) {
+    .icon {
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) brightness(1.1);
+    }
+
+    .nav-btn:hover .nav-icon {
+        filter: drop-shadow(0 4px 8px rgba(212, 196, 168, 0.5)) brightness(1.15);
+    }
+
+    .stat-card:hover .icon {
+        filter: drop-shadow(0 8px 16px rgba(212, 196, 168, 0.6)) brightness(1.2);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCESSIBILITY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .icon,
+    .nav-icon,
+    .loading-spinner,
+    .status-icon,
+    .success-icon,
+    .error-icon {
+        animation: none;
+        transition: none;
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    .icon {
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)) contrast(1.2);
+    }
+
+    .nav-btn:hover .nav-icon {
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7)) contrast(1.3);
+    }
+}

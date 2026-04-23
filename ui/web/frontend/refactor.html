@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchHunter v3.0 - Refactoring</title>
+    <link rel="stylesheet" href="/static/components/base.css">
+    <link rel="stylesheet" href="/static/components/icons.css">
+    <link rel="stylesheet" href="/static/refactor.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <img src="/static/assets/logo/logo_256.png" alt="GlitchHunter Logo" class="header-logo">
+                    <div>
+                        <h1 class="header-title">🔧 Refactoring Manager</h1>
+                        <p class="header-subtitle">Code-Improvements mit Preview und Rollback</p>
+                    </div>
+                </div>
+                <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Navigation öffnen">
+                    <svg class="mobile-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <nav class="header-nav" id="mainNav">
+                    <a href="/" class="nav-btn">
+                        <img src="/static/assets/nav/dashboard.png" alt="" class="nav-icon"> Dashboard
+                    </a>
+                    <a href="/problem.html" class="nav-btn">
+                        <img src="/static/assets/nav/problem.png" alt="" class="nav-icon"> Problemlöser
+                    </a>
+                    <a href="/refactor.html" class="nav-btn active">
+                        <img src="/static/assets/nav/refactor.png" alt="" class="nav-icon"> Refactoring
+                    </a>
+                    <a href="/reports.html" class="nav-btn">
+                        <img src="/static/assets/nav/reports.png" alt="" class="nav-icon"> Reports
+                    </a>
+                    <a href="/history.html" class="nav-btn">
+                        <img src="/static/assets/nav/history.png" alt="" class="nav-icon"> History
+                    </a>
+                    <a href="/settings.html" class="nav-btn">
+                        <img src="/static/assets/nav/settings.png" alt="" class="nav-icon"> Einstellungen
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- File Selection -->
+        <div class="card" id="fileSelectionCard">
+            <h2>📁 Datei auswählen</h2>
+            <form id="fileSelectForm" class="file-select-form">
+                <div class="form-group">
+                    <label for="filePath">Dateipfad:</label>
+                    <input 
+                        type="text" 
+                        id="filePath" 
+                        placeholder="/home/schaf/projects/glitchhunter/src/example.py"
+                        required
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary">🔍 Analysieren</button>
+            </form>
+        </div>
+
+        <!-- Suggestions List -->
+        <div class="card" id="suggestionsCard" style="display: none;">
+            <h2>💡 Gefundene Refactoring-Möglichkeiten</h2>
+            <div id="suggestionsList" class="suggestions-list">
+                <!-- Wird dynamisch gefüllt -->
+            </div>
+        </div>
+
+        <!-- Preview Modal -->
+        <div id="previewModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="previewTitle">Refactoring Preview</h2>
+                    <button class="close-btn" onclick="closePreview()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="preview-info">
+                        <div class="info-row">
+                            <span class="info-label">📁 Datei:</span>
+                            <span id="previewFilePath" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">📊 Risiko:</span>
+                            <span id="previewRisk" class="info-value risk-medium">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">➕ Zeilen hinzu:</span>
+                            <span id="previewLinesAdded" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">➖ Zeilen entfernt:</span>
+                            <span id="previewLinesRemoved" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">🧪 Tests erforderlich:</span>
+                            <span id="previewTestsRequired" class="info-value">-</span>
+                        </div>
+                    </div>
+
+                    <h3>📋 Diff-Ansicht</h3>
+                    <div id="diffView" class="diff-view">
+                        <!-- Diff wird dynamisch geladen -->
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" id="applyBtn" class="btn btn-primary">✅ Anwenden</button>
+                        <button type="button" id="cancelBtn" class="btn btn-secondary">❌ Abbrechen</button>
+                    </div>
+
+                    <!-- Status Message -->
+                    <div id="applyStatus" class="status-message" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="card" id="historyCard" style="display: none;">
+            <h2>📜 Refactoring-Historie</h2>
+            <div id="historyList" class="history-list">
+                <!-- Wird dynamisch gefüllt -->
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center text-muted text-sm py-6">
+        <p>GlitchHunter v3.0 • AI-powered Code Analysis</p>
+        <p class="mt-2">
+            <a href="http://asgard:3000" target="_blank" class="nav-btn">💬 OpenWebUI</a>
+            <a href="/docs" target="_blank" class="nav-btn">📚 API Docs</a>
+        </p>
+    </footer>
+</div>
+
+<script>
+    function toggleMobileNav() {
+        const nav = document.getElementById('mainNav');
+        nav.classList.toggle('active');
+    }
+    
+    document.addEventListener('click', function(event) {
+        const nav = document.getElementById('mainNav');
+        const toggle = document.querySelector('.mobile-nav-toggle');
+        
+        if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+            nav.classList.remove('active');
+        }
+    });
+</script>
+<script src="/static/refactor.js"></script>
+</body>
+</html>

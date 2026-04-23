@@ -47,7 +47,18 @@ dependencies = [
     "tree-sitter>=0.21.0",
     "tree-sitter-python>=0.21.0",
     "tree-sitter-javascript>=0.21.0",
+    "tree-sitter-typescript>=0.21.0",
     "tree-sitter-rust>=0.21.0",
+    "tree-sitter-go>=0.21.0",
+    "tree-sitter-java>=0.21.0",
+    "tree-sitter-c>=0.21.0",
+    "tree-sitter-cpp>=0.21.0",
+    "tree-sitter-zig>=1.0.0",
+    "tree-sitter-solidity>=1.0.0",
+    "tree-sitter-kotlin>=0.3.0",
+    "tree-sitter-swift>=0.4.0",
+    "tree-sitter-php>=0.22.0",
+    "tree-sitter-ruby>=0.21.0",
     "networkx>=3.0.0",
     "hypothesis>=6.90.0",
     "radon>=6.0.0",
@@ -80,6 +91,7 @@ docs = [
 [project.scripts]
 glitchhunter = "src.cli:main"
 glitchhunter-api = "src.api.server:main"
+glitchhunter-webui = "ui.web.backend.app:main"
 
 [project.urls]
 Homepage = "https://github.com/glitchhunter/glitchhunter"
@@ -89,7 +101,7 @@ Issues = "https://github.com/glitchhunter/glitchhunter/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*"]
+include = ["src*", "ui*"]
 
 [tool.black]
 line-length = 100
@@ -164,6 +176,8 @@ addopts = [
     "--cov=src",
     "--cov-report=term-missing",
     "--cov-report=html",
+    "--benchmark-autosave",
+    "--benchmark-compare=0001",
 ]
 testpaths = ["tests"]
 asyncio_mode = "auto"
@@ -171,6 +185,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "gpu: marks tests that require GPU",
+    "benchmark: marks tests as benchmarks",
 ]
 
 [tool.coverage.run]

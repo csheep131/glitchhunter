@@ -1,0 +1,158 @@
+{
+  "name": "glitchhunter",
+  "displayName": "GlitchHunter - Code Analysis",
+  "description": "AI-powered code analysis with multi-agent swarm, ML bug prediction, and auto-refactoring",
+  "version": "3.0.0",
+  "publisher": "glitchhunter",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "code analysis",
+    "bug detection",
+    "refactoring",
+    "AI",
+    "machine learning",
+    "security",
+    "python",
+    "javascript",
+    "typescript",
+    "rust",
+    "go",
+    "java"
+  ],
+  "activationEvents": [
+    "onLanguage:python",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:rust",
+    "onLanguage:go",
+    "onLanguage:java"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "glitchhunter.analyzeWorkspace",
+        "title": "GlitchHunter: Analyze Workspace"
+      },
+      {
+        "command": "glitchhunter.analyzeCurrentFile",
+        "title": "GlitchHunter: Analyze Current File"
+      },
+      {
+        "command": "glitchhunter.showResults",
+        "title": "GlitchHunter: Show Results"
+      },
+      {
+        "command": "glitchhunter.applyRefactoring",
+        "title": "GlitchHunter: Apply Refactoring"
+      },
+      {
+        "command": "glitchhunter.openDashboard",
+        "title": "GlitchHunter: Open Web Dashboard"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "resourceLangId == python || resourceLangId == javascript || resourceLangId == typescript",
+          "command": "glitchhunter.analyzeCurrentFile",
+          "group": "navigation@1"
+        }
+      ],
+      "explorer/context": [
+        {
+          "when": "explorerResourceIsFolder",
+          "command": "glitchhunter.analyzeWorkspace",
+          "group": "navigation@1"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "glitchhunter-sidebar",
+          "title": "GlitchHunter",
+          "icon": "$(bug)"
+        }
+      ]
+    },
+    "views": {
+      "glitchhunter-sidebar": [
+        {
+          "type": "webview",
+          "id": "glitchhunter.resultsView",
+          "name": "Analysis Results",
+          "contextualTitle": "GlitchHunter Results"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "GlitchHunter",
+      "properties": {
+        "glitchhunter.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "URL of the GlitchHunter server"
+        },
+        "glitchhunter.enableParallelAnalysis": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable parallel analysis for faster results"
+        },
+        "glitchhunter.enableMlPrediction": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable ML-based bug prediction"
+        },
+        "glitchhunter.autoApplyRefactoring": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically apply suggested refactorings"
+        },
+        "glitchhunter.maxWorkers": {
+          "type": "number",
+          "default": 4,
+          "description": "Maximum number of worker threads for parallel analysis"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "20.x",
+    "typescript": "^5.3.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "ts-loader": "^9.5.1",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/glitchhunter/glitchhunter.git"
+  },
+  "homepage": "https://github.com/glitchhunter/glitchhunter#readme",
+  "bugs": {
+    "url": "https://github.com/glitchhunter/glitchhunter/issues"
+  },
+  "license": "MIT",
+  "icon": "images/icon.png"
+}

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchHunter v3.0 - Stack-Konfiguration</title>
+    <link rel="stylesheet" href="/static/components/base.css">
+    <link rel="stylesheet" href="/static/components/icons.css">
+    <link rel="stylesheet" href="/static/stack-config.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div>
+                    <h1>⚙️ Stack-Konfiguration</h1>
+                    <p class="subtitle">Hardware-Stacks und Remote-APIs konfigurieren</p>
+                </div>
+                <nav class="header-nav">
+                    <a href="/stacks.html" class="nav-btn">← Zurück zu Stacks</a>
+                    <a href="/" class="nav-btn">🏠 Dashboard</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="stack_a">📦 Stack A</button>
+            <button class="tab-btn" data-tab="stack_b">⚡ Stack B</button>
+            <button class="tab-btn" data-tab="stack_c">🌐 Stack C (Remote API)</button>
+            <button class="tab-btn" data-tab="remote_servers">🖥️ Remote-Server</button>
+        </div>
+
+        <!-- Stack A Config -->
+        <div class="stack-config active" id="stack_a-config">
+            <div class="card">
+                <h2>📦 Stack A (Standard) - Lokale Konfiguration</h2>
+                <div class="config-section">
+                    <h3>💻 Hardware</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>GPU:</label>
+                            <input type="text" value="GTX 3060 (8GB)" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Modus:</label>
+                            <select id="stack_a_mode">
+                                <option value="sequential">Sequenziell</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>🤖 Modelle</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Primäres Modell:</label>
+                            <select id="stack_a_primary">
+                                <option value="qwen3.5-9b-q4_k_m">Qwen3.5-9B (4-bit)</option>
+                                <option value="phi-4-mini-q8">Phi-4-mini (8-bit)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Sekundäres Modell:</label>
+                            <select id="stack_a_secondary">
+                                <option value="phi-4-mini-q8">Phi-4-mini (8-bit)</option>
+                                <option value="qwen3.5-9b-q4_k_m">Qwen3.5-9B (4-bit)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>⚙️ Inference</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Max Batch Size:</label>
+                            <input type="number" id="stack_a_batch" value="4" min="1" max="16">
+                        </div>
+                        <div class="form-group">
+                            <label>Parallele Requests:</label>
+                            <select id="stack_a_parallel">
+                                <option value="false">Nein</option>
+                                <option value="true">Ja</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-actions">
+                    <button class="btn btn-primary" onclick="stackConfigManager.saveConfig('stack_a')">
+                        💾 Speichern
+                    </button>
+                    <button class="btn btn-secondary" onclick="stackConfigManager.loadConfig('stack_a')">
+                        🔄 Laden
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stack B Config -->
+        <div class="stack-config" id="stack_b-config">
+            <div class="card">
+                <h2>⚡ Stack B (Enhanced) - Lokale Konfiguration</h2>
+                <div class="config-section">
+                    <h3>💻 Hardware</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>GPU:</label>
+                            <input type="text" value="RTX 3090 (24GB)" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Modus:</label>
+                            <select id="stack_b_mode">
+                                <option value="parallel">Parallel</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>🤖 Modelle</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Primäres Modell:</label>
+                            <select id="stack_b_primary">
+                                <option value="qwen3.5-27b-q4_k_m">Qwen3.5-27B (4-bit)</option>
+                                <option value="deepseek-v3.2-q8">DeepSeek-V3.2 (8-bit)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Sekundäres Modell:</label>
+                            <select id="stack_b_secondary">
+                                <option value="deepseek-v3.2-q8">DeepSeek-V3.2 (8-bit)</option>
+                                <option value="qwen3.5-27b-q4_k_m">Qwen3.5-27B (4-bit)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>⚙️ Inference</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Max Batch Size:</label>
+                            <input type="number" id="stack_b_batch" value="10" min="1" max="32">
+                        </div>
+                        <div class="form-group">
+                            <label>Parallele Requests:</label>
+                            <select id="stack_b_parallel">
+                                <option value="true">Ja</option>
+                                <option value="false">Nein</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-actions">
+                    <button class="btn btn-primary" onclick="stackConfigManager.saveConfig('stack_b')">
+                        💾 Speichern
+                    </button>
+                    <button class="btn btn-secondary" onclick="stackConfigManager.loadConfig('stack_b')">
+                        🔄 Laden
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stack C Config (Remote API) -->
+        <div class="stack-config" id="stack_c-config">
+            <div class="card">
+                <h2>🌐 Stack C (Remote API) - Konfiguration</h2>
+                
+                <div class="config-section">
+                    <h3>🔗 API-Adresse</h3>
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label>API Endpunkt:</label>
+                            <input type="text" id="stack_c_api_url" placeholder="http://asgard-llm:8081/v1" value="http://asgard-llm:8081/v1">
+                            <p class="help-text">Vollständige API-URL einschließlich /v1 für OpenAI-kompatible APIs</p>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>API-Key:</label>
+                            <input type="password" id="stack_c_api_key" placeholder="asgard" value="asgard">
+                        </div>
+                        <div class="form-group">
+                            <label>API-Typ:</label>
+                            <select id="stack_c_api_type">
+                                <option value="openai">OpenAI-kompatibel</option>
+                                <option value="ollama">Ollama</option>
+                                <option value="vllm">vLLM</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="config-actions">
+                        <button class="btn btn-primary" onclick="stackConfigManager.testConnection()">
+                            🔗 Verbindung testen
+                        </button>
+                        <button class="btn btn-secondary" onclick="stackConfigManager.loadModels()">
+                            📦 Verfügbare Modelle laden
+                        </button>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>📦 Verfügbare Modelle</h3>
+                    <div id="availableModelsList" class="models-list">
+                        <p class="placeholder-text">Klicke auf "Verfügbare Modelle laden" um Modelle abzurufen...</p>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h3>🎯 Modell-Zuweisung</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Primäres Modell:</label>
+                            <select id="stack_c_primary">
+                                <option value="">-- Modell auswählen --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Sekundäres Modell:</label>
+                            <select id="stack_c_secondary">
+                                <option value="">-- Modell auswählen --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="help-text">Wählen Sie Modelle aus den verfügbaren Remote-Modellen aus</p>
+                </div>
+
+                <div class="config-section">
+                    <h3>⚙️ Erweiterte Einstellungen</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Timeout (Sekunden):</label>
+                            <input type="number" id="stack_c_timeout" value="120" min="30" max="600">
+                        </div>
+                        <div class="form-group">
+                            <label>Rate Limit (Requests/Min):</label>
+                            <input type="number" id="stack_c_rate_limit" value="60" min="1" max="1000">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Max Batch Size:</label>
+                            <input type="number" id="stack_c_batch" value="10" min="1" max="32">
+                        </div>
+                        <div class="form-group">
+                            <label>Parallele Requests:</label>
+                            <select id="stack_c_parallel">
+                                <option value="true">Ja</option>
+                                <option value="false">Nein</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-actions">
+                    <button class="btn btn-primary" onclick="stackConfigManager.saveConfig('stack_c')">
+                        💾 Speichern
+                    </button>
+                    <button class="btn btn-secondary" onclick="stackConfigManager.loadConfig('stack_c')">
+                        🔄 Laden
+                    </button>
+                    <button class="btn btn-secondary" onclick="stackConfigManager.resetToDefault('stack_c')">
+                        ↩️ Auf Standard zurücksetzen
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Remote Servers Tab -->
+        <div class="stack-config" id="remote_servers-config">
+            <div class="card">
+                <div class="card-header">
+                    <h2>🖥️ Remote-Server</h2>
+                    <button type="button" class="btn btn-primary btn-small" onclick="remoteServerManager.showAddServerModal()">
+                        ➕ Server hinzufügen
+                    </button>
+                </div>
+                <div class="servers-list" id="remoteServersList">
+                    <!-- Wird dynamisch geladen -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Server Modal -->
+    <div id="serverModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="serverModalTitle">Server hinzufügen</h2>
+                <button class="close-btn" onclick="closeServerModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="serverForm" class="config-form">
+                    <div class="form-group">
+                        <label>Name:</label>
+                        <input type="text" id="serverName" required placeholder="z.B. Asgard Ollama">
+                    </div>
+                    <div class="form-group">
+                        <label>Host/IP:</label>
+                        <input type="text" id="serverHost" required placeholder="asgard oder 192.168.1.100">
+                    </div>
+                    <div class="form-group">
+                        <label>Port:</label>
+                        <input type="number" id="serverPort" required value="11434" min="1" max="65535">
+                    </div>
+                    <div class="form-group">
+                        <label>API-Typ:</label>
+                        <select id="serverApiType" required>
+                            <option value="ollama">Ollama</option>
+                            <option value="vllm">vLLM</option>
+                            <option value="openai">OpenAI-kompatibel</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>API-Key (optional):</label>
+                        <input type="text" id="serverApiKey" placeholder="Nur für OpenAI/Custom">
+                    </div>
+                </form>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-primary" onclick="remoteServerManager.saveServer()">
+                        💾 Speichern
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeServerModal()">
+                        ❌ Abbrechen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/stack-config.js"></script>
+    <script src="/static/servers.js"></script>
+</body>
+</html>

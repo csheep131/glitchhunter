@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlitchHunter v3.0 - Einstellungen</title>
+    <link rel="stylesheet" href="/static/components/base.css">
+    <link rel="stylesheet" href="/static/components/icons.css">
+    <link rel="stylesheet" href="/static/settings.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <img src="/static/assets/logo/logo_256.png" alt="GlitchHunter Logo" class="header-logo">
+                    <div>
+                        <h1 class="header-title">⚙️ Einstellungen</h1>
+                        <p class="header-subtitle">Konfiguration und Settings</p>
+                    </div>
+                </div>
+                <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Navigation öffnen">
+                    <svg class="mobile-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <nav class="header-nav" id="mainNav">
+                    <a href="/" class="nav-btn">
+                        <img src="/static/assets/nav/dashboard.png" alt="" class="nav-icon"> Dashboard
+                    </a>
+                    <a href="/problem.html" class="nav-btn">
+                        <img src="/static/assets/nav/problem.png" alt="" class="nav-icon"> Problemlöser
+                    </a>
+                    <a href="/refactor.html" class="nav-btn">
+                        <img src="/static/assets/nav/refactor.png" alt="" class="nav-icon"> Refactoring
+                    </a>
+                    <a href="/reports.html" class="nav-btn">
+                        <img src="/static/assets/nav/reports.png" alt="" class="nav-icon"> Reports
+                    </a>
+                    <a href="/history.html" class="nav-btn">
+                        <img src="/static/assets/nav/history.png" alt="" class="nav-icon"> History
+                    </a>
+                    <a href="/settings.html" class="nav-btn active">
+                        <img src="/static/assets/nav/settings.png" alt="" class="nav-icon"> Einstellungen
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="general">Allgemein</button>
+            <button class="tab-btn" data-tab="analysis">Analyse</button>
+            <button class="tab-btn" data-tab="security">Security</button>
+            <button class="tab-btn" data-tab="logging">Logging</button>
+        </div>
+
+        <!-- Settings Formulare -->
+        <div class="settings-content">
+            <!-- Allgemein -->
+            <div class="settings-panel active" id="general-panel">
+                <h2>Allgemeine Einstellungen</h2>
+                <form id="general-form" class="settings-form">
+                    <div class="form-group">
+                        <label for="language">Sprache:</label>
+                        <select id="language" name="language">
+                            <option value="de">Deutsch</option>
+                            <option value="en">English</option>
+                        </select>
+                        <p class="help-text">Sprache für die Benutzeroberfläche</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="theme">Theme:</label>
+                        <select id="theme" name="theme">
+                            <option value="auto">Auto (System)</option>
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                        <p class="help-text">Farbschema der Oberfläche</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="timezone">Zeitzone:</label>
+                        <input type="text" id="timezone" name="timezone" value="Europe/Berlin" placeholder="Europe/Berlin">
+                        <p class="help-text">Zeitzone für Datumsangaben</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="date_format">Datumsformat:</label>
+                        <select id="date_format" name="date_format">
+                            <option value="DD.MM.YYYY">DD.MM.YYYY (deutsch)</option>
+                            <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
+                            <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
+                        </select>
+                        <p class="help-text">Format für Datumsanzeigen</p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Analyse -->
+            <div class="settings-panel" id="analysis-panel">
+                <h2>Analyse-Einstellungen</h2>
+                <form id="analysis-form" class="settings-form">
+                    <div class="form-group">
+                        <label for="default_stack">Default Stack:</label>
+                        <select id="default_stack" name="default_stack">
+                            <option value="stack_a">Stack A (Standard)</option>
+                            <option value="stack_b">Stack B (Enhanced)</option>
+                            <option value="stack_c">Stack C (Remote API)</option>
+                        </select>
+                        <p class="help-text">Standard-Hardware-Stack für Analysen</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Stack-Konfiguration:</label>
+                        <a href="/stack-config.html" class="btn btn-primary" style="display: inline-block; text-decoration: none;">
+                            📚 Stack-Konfiguration öffnen
+                        </a>
+                        <p class="help-text">Konfiguriere Stacks, Remote-APIs und Modell-Zuweisungen</p>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="default_parallel" name="default_parallel">
+                            <span>Parallele Analyse aktivieren</span>
+                        </label>
+                        <p class="help-text">Automatisch parallele Analyse verwenden</p>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="default_ml_prediction" name="default_ml_prediction">
+                            <span>ML Prediction aktivieren</span>
+                        </label>
+                        <p class="help-text">Automatisch ML-Vorhersage verwenden</p>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="default_auto_refactor" name="default_auto_refactor">
+                            <span>Auto-Refactoring aktivieren</span>
+                        </label>
+                        <p class="help-text">Automatisch Refactoring-Vorschläge generieren</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="max_workers">Max Workers:</label>
+                        <input type="number" id="max_workers" name="max_workers" min="1" max="16" value="4">
+                        <p class="help-text">Maximale Anzahl paralleler Worker (1-16)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="timeout_per_analysis">Timeout pro Analyse (Sekunden):</label>
+                        <input type="number" id="timeout_per_analysis" name="timeout_per_analysis" min="60" max="3600" value="300">
+                        <p class="help-text">Maximale Dauer pro Analyse (60-3600s)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="auto_refresh_interval">Auto-Refresh Intervall (Sekunden):</label>
+                        <input type="number" id="auto_refresh_interval" name="auto_refresh_interval" min="5" max="300" value="30">
+                        <p class="help-text">Wie oft Status automatisch aktualisiert wird (5-300s)</p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Security -->
+            <div class="settings-panel" id="security-panel">
+                <h2>Security-Einstellungen</h2>
+                <form id="security-form" class="settings-form">
+                    <div class="form-group">
+                        <label for="session_timeout_minutes">Session Timeout (Minuten):</label>
+                        <input type="number" id="session_timeout_minutes" name="session_timeout_minutes" min="5" max="1440" value="60">
+                        <p class="help-text">Nach welcher Zeit Sessions verfallen (5-1440min)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cors_origins">CORS Origins:</label>
+                        <textarea id="cors_origins" name="cors_origins" rows="3" placeholder="http://localhost:6262">http://localhost:6262</textarea>
+                        <p class="help-text">Erlaubte Origins (eine pro Zeile)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rate_limit_per_minute">Rate Limit (Requests pro Minute):</label>
+                        <input type="number" id="rate_limit_per_minute" name="rate_limit_per_minute" min="10" max="1000" value="60">
+                        <p class="help-text">Maximale Requests pro Minute (10-1000)</p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Logging -->
+            <div class="settings-panel" id="logging-panel">
+                <h2>Logging-Einstellungen</h2>
+                <form id="logging-form" class="settings-form">
+                    <div class="form-group">
+                        <label for="logging_level">Log-Level:</label>
+                        <select id="logging_level" name="logging_level">
+                            <option value="DEBUG">DEBUG</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="ERROR">ERROR</option>
+                        </select>
+                        <p class="help-text">Detaillierungsgrad der Logs</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="logging_file">Log-Datei:</label>
+                        <input type="text" id="logging_file" name="logging_file" value="logs/glitchhunter_webui.log" placeholder="logs/glitchhunter_webui.log">
+                        <p class="help-text">Pfad zur Log-Datei</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="logging_max_size_mb">Max Log-Größe (MB):</label>
+                        <input type="number" id="logging_max_size_mb" name="logging_max_size_mb" min="1" max="100" value="10">
+                        <p class="help-text">Maximale Größe pro Log-Datei (1-100MB)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="logging_backup_count">Log-Backups:</label>
+                        <input type="number" id="logging_backup_count" name="logging_backup_count" min="1" max="20" value="5">
+                        <p class="help-text">Anzahl der aufzubewahrenden Log-Backups (1-20)</p>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="settings-actions">
+            <button type="button" id="save-btn" class="btn btn-primary">💾 Speichern</button>
+            <button type="button" id="reset-btn" class="btn btn-secondary">🔄 Zurücksetzen</button>
+            <button type="button" id="export-btn" class="btn btn-secondary">📤 Export</button>
+            <button type="button" id="import-btn" class="btn btn-secondary">📥 Import</button>
+            <input type="file" id="import-file" accept=".json" style="display: none;">
+        </div>
+
+        <!-- Status Message -->
+        <div id="status-message" class="status-message" style="display: none;"></div>
+    </div>
+
+    <footer class="text-center text-muted text-sm py-6">
+        <p>GlitchHunter v3.0 • AI-powered Code Analysis</p>
+        <p class="mt-2">
+            <a href="http://asgard:3000" target="_blank" class="nav-btn">💬 OpenWebUI</a>
+            <a href="/docs" target="_blank" class="nav-btn">📚 API Docs</a>
+        </p>
+    </footer>
+</div>
+
+<script>
+    function toggleMobileNav() {
+        const nav = document.getElementById('mainNav');
+        nav.classList.toggle('active');
+    }
+    
+    document.addEventListener('click', function(event) {
+        const nav = document.getElementById('mainNav');
+        const toggle = document.querySelector('.mobile-nav-toggle');
+        
+        if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+            nav.classList.remove('active');
+        }
+    });
+</script>
+<script src="/static/settings.js"></script>
+</body>
+</html>
