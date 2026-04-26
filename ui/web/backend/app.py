@@ -46,8 +46,17 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from agent.parallel_swarm import ParallelSwarmCoordinator, ParallelExecutionResult
-from agent.swarm_coordinator import SwarmCoordinator
+# Optional: Agent-Imports (nur wenn verfügbar)
+try:
+    from agent.parallel_swarm import ParallelSwarmCoordinator, ParallelExecutionResult
+    from agent.swarm_coordinator import SwarmCoordinator
+    HAS_AGENT = True
+except ImportError as e:
+    logger.warning(f"Agent-Module nicht verfügbar: {e}")
+    HAS_AGENT = False
+    ParallelSwarmCoordinator = None
+    ParallelExecutionResult = None
+    SwarmCoordinator = None
 
 
 # ============== Models ==============
@@ -105,18 +114,19 @@ class JobManager:
         self._jobs: Dict[str, Dict[str, Any]] = {}
         self._websockets: Dict[str, List[WebSocket]] = {}
     
-    def create_job(self, repo_path: str) -> str:
+    def create_job(self, repo_path: str, stack: str = "stack_b") -> str:
         """Erstellt neuen Job."""
         job_id = str(uuid.uuid4())
         self._jobs[job_id] = {
             "status": "pending",
             "repo_path": repo_path,
+            "stack": stack,
             "created_at": datetime.now(),
             "result": None,
             "errors": [],
         }
         self._websockets[job_id] = []
-        logger.info(f"Job {job_id[:8]} erstellt für {repo_path}")
+        logger.info(f"Job {job_id[:8]} erstellt für {repo_path} (Stack: {stack})")
         return job_id
     
     def update_job_status(self, job_id: str, status: str, **kwargs):
@@ -191,6 +201,20 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Cache-Control Middleware - Verhindert Browser-Caching von HTML/JS/CSS
+    @app.middleware("http")
+    async def no_cache_middleware(request, call_next):
+        """Setzt Cache-Control Header für statische Dateien."""
+        response = await call_next(request)
+        
+        # Keine Caches für HTML, JS, CSS
+        if request.url.path.endswith(('.html', '.js', '.css')):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        
+        return response
+
     # Routes
     app.add_api_route("/api/v1/analyze", analyze_repository, methods=["POST"])
     app.add_api_route("/api/v1/jobs", list_jobs, methods=["GET"])
@@ -208,6 +232,10 @@ def create_app() -> FastAPI:
     from ui.web.backend.refactor import router as refactor_router
     app.include_router(refactor_router)
     
+    # Discovery Routes (Projekt-/Datei-Auswahl für UI)
+    from ui.web.backend.discovery_router import router as discovery_router
+    app.include_router(discovery_router)
+
     # Problem-Solving Routes (neu in Phase 2.1)
     from ui.web.backend.problem_solver import router as problem_router
     app.include_router(problem_router)
@@ -235,6 +263,48 @@ def create_app() -> FastAPI:
     # Remote-Server Routes (neu für Model-Config)
     from ui.web.backend.remote_servers_router import router as servers_router
     app.include_router(servers_router)
+    
+    # SSHFS Mount Routes (Remote-Projekte einbinden)
+    from ui.web.backend.sshfs_router import router as sshfs_router
+    app.include_router(sshfs_router)
+
+    # SSHFS Auto-Mount beim Start (wenn konfiguriert)
+    @app.on_event("startup")
+    async def sshfs_auto_mount():
+        """Automatischer SSHFS-Mount beim App-Start (wenn konfiguriert)."""
+        import asyncio
+        # Kurz warten bis App vollständig gestartet ist
+        await asyncio.sleep(2)
+        try:
+            import subprocess
+            from ui.web.backend.sshfs_router import _load_state, _is_mounted
+            config = _load_state()
+            if config.auto_mount and not _is_mounted(config.mount_point):
+                logger.info(f"SSHFS Auto-Mount: {config.user}@{config.host}:{config.remote_path} -> {config.mount_point}")
+                import os
+                os.makedirs(config.mount_point, exist_ok=True)
+                remote = f"{config.user}@{config.host}:{config.remote_path}"
+                cmd = [
+                    "sshfs", "-o", "allow_other",
+                    "-o", "StrictHostKeyChecking=no",
+                    "-o", "IdentityFile=/root/.ssh/id_ed25519",
+                    "-o", "reconnect",
+                    "-o", "ServerAliveInterval=15",
+                    "-o", "ServerAliveCountMax=3",
+                    "-o", "auto_unmount",
+                    remote, config.mount_point,
+                ]
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                if result.returncode == 0:
+                    logger.info("SSHFS Auto-Mount erfolgreich")
+                else:
+                    logger.warning(f"SSHFS Auto-Mount fehlgeschlagen: {result.stderr.strip()}")
+            elif config.auto_mount and _is_mounted(config.mount_point):
+                logger.info("SSHFS bereits gemountet, Auto-Mount übersprungen")
+            else:
+                logger.debug("SSHFS Auto-Mount nicht aktiviert")
+        except Exception as e:
+            logger.warning(f"SSHFS Auto-Mount Fehler (nicht kritisch): {e}")
 
     # Frontend Routes (HTML Dashboard + alle anderen Seiten)
     @app.get("/")
@@ -358,7 +428,7 @@ async def analyze_repository(
         AnalyzeResponse mit Job-ID
     """
     # Job erstellen
-    job_id = job_manager.create_job(request.repo_path)
+    job_id = job_manager.create_job(request.repo_path, request.stack)
     
     # Analyse im Hintergrund starten
     background_tasks.add_task(
@@ -378,6 +448,194 @@ async def analyze_repository(
         message="Analyse gestartet",
         estimated_duration="30-300 Sekunden (abhängig von Repository-Größe)",
     )
+
+
+async def _run_remote_analysis(job_id: str, repo_path: str, stack: str) -> ParallelExecutionResult:
+    """
+    Führt Analyse über Remote-API (Stack C) durch.
+    
+    Args:
+        job_id: Job-ID
+        repo_path: Repository-Pfad
+        stack: Stack-Name (stack_c)
+        
+    Returns:
+        ParallelExecutionResult mit Findings
+    """
+    import yaml
+    
+    logger.info(f"Stack C Remote-Analyse für {repo_path}")
+    
+    # Config laden für Remote-API Settings
+    config_path = Path(__file__).parent.parent.parent.parent / "config.yaml"
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+    except Exception as e:
+        logger.warning(f"Konnte config.yaml nicht laden: {e}")
+        config = {}
+    
+    # Stack C Config extrahieren
+    stack_c_config = config.get("hardware", {}).get("stack_c", {})
+    remote_config = stack_c_config.get("remote", {})
+    
+    api_url = remote_config.get("api_url", "http://asgard-llm:8081/v1")
+    api_key = remote_config.get("api_key", "asgard")
+    api_type = remote_config.get("api_type", "openai")
+    timeout = remote_config.get("timeout", 120)
+    
+    logger.info(f"Remote-API: {api_url} (Typ: {api_type})")
+    
+    # Status: running
+    job_manager.update_job_status(job_id, "running")
+    await job_manager.broadcast(job_id, {"type": "status", "status": "running"})
+    
+    # Repository-Inhalte lesen
+    repo_path_obj = Path(repo_path)
+    if not repo_path_obj.exists():
+        raise ValueError(f"Repository-Pfad existiert nicht: {repo_path}")
+    
+    # Dateien sammeln (max 50 Dateien für Remote-Analyse)
+    files = []
+    for ext in ["*.py", "*.js", "*.ts", "*.go", "*.rs", "*.java", "*.cpp", "*.c", "*.h"]:
+        files.extend(repo_path_obj.rglob(ext))
+    
+    files = sorted(files)[:50]  # Limit auf 50 Dateien
+    logger.info(f"Lese {len(files)} Dateien für Remote-Analyse...")
+    
+    # Code-Inhalte sammeln
+    code_snippets = []
+    for file_path in files[:10]:  # Nur erste 10 Dateien für Prompt
+        try:
+            content = file_path.read_text(encoding="utf-8", errors="ignore")
+            relative_path = str(file_path.relative_to(repo_path_obj))
+            # Max 2000 Zeichen pro Datei
+            code_snippets.append(f"## {relative_path}\n```\n{content[:2000]}\n```")
+        except Exception as e:
+            logger.warning(f"Konnte {file_path} nicht lesen: {e}")
+    
+    combined_code = "\n\n".join(code_snippets)
+    
+    # Prompt für Remote-API
+    prompt = f"""Analysiere den folgenden Code auf Sicherheitslücken, Bugs und Performance-Probleme.
+
+Repository: {repo_path}
+
+Code:
+{combined_code}
+
+Antworte im JSON-Format mit einer Liste von Findings:
+[
+  {{
+    "title": "Kurze Beschreibung",
+    "description": "Detaillierte Beschreibung",
+    "severity": "critical|high|medium|low",
+    "category": "security|performance|correctness|runtime",
+    "file_path": "relativer/pfad/zur/Datei",
+    "line_start": 10,
+    "line_end": 20,
+    "confidence": 0.85,
+    "fix_suggestion": "Vorschlag zur Behebung"
+  }}
+]
+
+Nur JSON antworten, kein Markdown."""
+
+    # API Call
+    try:
+        import httpx
+        
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        
+        payload = {
+            "model": "default",
+            "messages": [
+                {"role": "system", "content": "Du bist ein Code-Analyse-Experte. Antworte nur im JSON-Format."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.1,
+            "max_tokens": 4096,
+        }
+        
+        logger.info(f"Sende Request an {api_url}/chat/completions...")
+        
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(
+                f"{api_url}/chat/completions",
+                json=payload,
+                headers=headers,
+            )
+            
+            if response.status_code != 200:
+                raise RuntimeError(f"Remote-API Error {response.status_code}: {response.text[:500]}")
+            
+            data = response.json()
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            
+            logger.info(f"Remote-API Antwort erhalten ({len(content)} Zeichen)")
+        
+        # JSON aus Antwort extrahieren
+        import json
+        import re
+        
+        # Versuche JSON aus Markdown-Code-Block zu extrahieren
+        json_match = re.search(r'```(?:json)?\s*\n(.*?)\n```', content, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(1)
+        else:
+            json_str = content.strip()
+        
+        findings_data = json.loads(json_str)
+        
+        if not isinstance(findings_data, list):
+            findings_data = [findings_data]
+        
+        # Findings konvertieren
+        from src.core.findings import Finding, FindingSeverity, FindingCategory
+        
+        findings = []
+        for fd in findings_data:
+            try:
+                severity = FindingSeverity(fd.get("severity", "medium"))
+            except ValueError:
+                severity = FindingSeverity.MEDIUM
+            
+            try:
+                category = FindingCategory(fd.get("category", "correctness"))
+            except ValueError:
+                category = FindingCategory.CORRECTNESS
+            
+            finding = Finding(
+                title=fd.get("title", "Unknown Issue"),
+                description=fd.get("description", ""),
+                severity=severity,
+                category=category,
+                file_path=fd.get("file_path", repo_path),
+                line_start=fd.get("line_start", 0),
+                line_end=fd.get("line_end", 0),
+                confidence=fd.get("confidence", 0.5),
+                fix_suggestion=fd.get("fix_suggestion", ""),
+                source="remote_api",
+            )
+            findings.append(finding)
+        
+        logger.info(f"Remote-Analyse: {len(findings)} Findings generiert")
+        
+        return ParallelExecutionResult(
+            success=True,
+            findings=findings,
+            errors=[],
+            execution_time=0,  # Wird später überschrieben
+            parallelization_factor=1.0,
+        )
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON Parse Error von Remote-API: {e}")
+        logger.error(f"Antwort: {content[:1000] if 'content' in dir() else 'N/A'}")
+        raise RuntimeError(f"Remote-API Antwort konnte nicht geparsed werden: {e}")
+    except Exception as e:
+        logger.error(f"Remote-API Error: {e}")
+        raise
 
 
 async def run_analysis(
@@ -405,46 +663,84 @@ async def run_analysis(
     logger.info(f"=" * 60)
     logger.info(f"Analyse gestartet für Job {job_id[:8]}")
     logger.info(f"  Repository: {repo_path}")
+    logger.info(f"  Stack: {stack}")
     logger.info(f"  Parallel: {use_parallel}, ML: {enable_ml}, Refactor: {enable_refactor}")
     logger.info(f"  Max Workers: {max_workers}")
     logger.info(f"=" * 60)
 
     try:
-        # Validiere Repository-Pfad
-        repo_path_obj = Path(repo_path)
-        if not repo_path_obj.exists():
-            raise ValueError(f"Repository-Pfad existiert nicht: {repo_path}")
-        if not repo_path_obj.is_dir():
-            raise ValueError(f"Repository-Pfad ist kein Verzeichnis: {repo_path}")
+        # Stack C: Remote API - andere Logik
+        if stack == "stack_c":
+            logger.info(f"Verwende Stack C (Remote API) für Job {job_id[:8]}")
+            result = await _run_remote_analysis(job_id, repo_path, stack)
+        else:
+            # Stack A/B: Lokale Swarm-Analyse
+            # Validiere Repository-Pfad
+            repo_path_obj = Path(repo_path)
+            if not repo_path_obj.exists():
+                raise ValueError(f"Repository-Pfad existiert nicht: {repo_path}")
+            if not repo_path_obj.is_dir():
+                raise ValueError(f"Repository-Pfad ist kein Verzeichnis: {repo_path}")
 
-        logger.debug(f"Repository-Pfad validiert: {repo_path}")
+            logger.debug(f"Repository-Pfad validiert: {repo_path}")
 
-        # Status: running
-        logger.info(f"Job {job_id[:8]} Status: pending -> running")
-        job_manager.update_job_status(job_id, "running")
-        await job_manager.broadcast(job_id, {"type": "status", "status": "running"})
+            # Status: running
+            logger.info(f"Job {job_id[:8]} Status: pending -> running")
+            job_manager.update_job_status(job_id, "running")
+            await job_manager.broadcast(job_id, {"type": "status", "status": "running"})
 
-        # Coordinator auswählen und initialisieren
-        coordinator = None
-        result = None
+            # Coordinator auswählen und initialisieren
+            coordinator = None
+            result = None
 
-        if use_parallel:
-            logger.info(f"Initialisiere ParallelSwarmCoordinator mit {max_workers} Workern...")
-            try:
-                coordinator = ParallelSwarmCoordinator(max_workers=max_workers)
-                logger.debug(f"ParallelSwarmCoordinator erfolgreich initialisiert")
-            except Exception as coord_init_error:
-                logger.error(
-                    f"ParallelSwarmCoordinator Initialisierung fehlgeschlagen: {coord_init_error}",
-                    exc_info=True,
-                )
-                logger.warning(f"Falle zurück auf SwarmCoordinator (sequenziell)")
+            if use_parallel and stack == "stack_b":
+                logger.info(f"Initialisiere ParallelSwarmCoordinator mit {max_workers} Workern...")
+                try:
+                    coordinator = ParallelSwarmCoordinator(max_workers=max_workers)
+                    logger.debug(f"ParallelSwarmCoordinator erfolgreich initialisiert")
+                except Exception as coord_init_error:
+                    logger.error(
+                        f"ParallelSwarmCoordinator Initialisierung fehlgeschlagen: {coord_init_error}",
+                        exc_info=True,
+                    )
+                    logger.warning(f"Falle zurück auf SwarmCoordinator (sequenziell)")
 
-                # Fallback auf SwarmCoordinator
-                coordinator = SwarmCoordinator()
-                logger.info(f"SwarmCoordinator (Fallback) initialisiert")
+                    # Fallback auf SwarmCoordinator
+                    coordinator = SwarmCoordinator()
+                    logger.info(f"SwarmCoordinator (Fallback) initialisiert")
 
-                # SwarmCoordinator ausführen
+                    # SwarmCoordinator ausführen
+                    logger.info(f"Starte sequenzielle Swarm-Analyse...")
+                    swarm_result = await coordinator.run_swarm(repo_path)
+                    logger.info(f"Swarm-Analyse abgeschlossen")
+
+                    # In ParallelExecutionResult konvertieren
+                    result = ParallelExecutionResult(
+                        success=swarm_result.get("success", False),
+                        findings=swarm_result.get("findings", []),
+                        errors=swarm_result.get("errors", []),
+                        execution_time=swarm_result.get("execution_time", 0),
+                        parallelization_factor=1.0,
+                    )
+                else:
+                    # ParallelSwarmCoordinator erfolgreich, jetzt ausführen
+                    logger.info(f"Starte parallele Swarm-Analyse mit {max_workers} Workern...")
+                    result = await coordinator.run_swarm_parallel(repo_path)
+                    logger.info(f"Parallele Swarm-Analyse abgeschlossen")
+
+            else:
+                # Sequenzielle Analyse
+                logger.info(f"Initialisiere SwarmCoordinator (sequenziell)...")
+                try:
+                    coordinator = SwarmCoordinator()
+                    logger.debug(f"SwarmCoordinator erfolgreich initialisiert")
+                except Exception as coord_init_error:
+                    logger.error(
+                        f"SwarmCoordinator Initialisierung fehlgeschlagen: {coord_init_error}",
+                        exc_info=True,
+                    )
+                    raise RuntimeError(f"Coordinator Initialisierung fehlgeschlagen: {coord_init_error}")
+
                 logger.info(f"Starte sequenzielle Swarm-Analyse...")
                 swarm_result = await coordinator.run_swarm(repo_path)
                 logger.info(f"Swarm-Analyse abgeschlossen")
@@ -457,37 +753,6 @@ async def run_analysis(
                     execution_time=swarm_result.get("execution_time", 0),
                     parallelization_factor=1.0,
                 )
-            else:
-                # ParallelSwarmCoordinator erfolgreich, jetzt ausführen
-                logger.info(f"Starte parallele Swarm-Analyse mit {max_workers} Workern...")
-                result = await coordinator.run_swarm_parallel(repo_path)
-                logger.info(f"Parallele Swarm-Analyse abgeschlossen")
-
-        else:
-            # Sequenzielle Analyse
-            logger.info(f"Initialisiere SwarmCoordinator (sequenziell)...")
-            try:
-                coordinator = SwarmCoordinator()
-                logger.debug(f"SwarmCoordinator erfolgreich initialisiert")
-            except Exception as coord_init_error:
-                logger.error(
-                    f"SwarmCoordinator Initialisierung fehlgeschlagen: {coord_init_error}",
-                    exc_info=True,
-                )
-                raise RuntimeError(f"Coordinator Initialisierung fehlgeschlagen: {coord_init_error}")
-
-            logger.info(f"Starte sequenzielle Swarm-Analyse...")
-            swarm_result = await coordinator.run_swarm(repo_path)
-            logger.info(f"Swarm-Analyse abgeschlossen")
-
-            # In ParallelExecutionResult konvertieren
-            result = ParallelExecutionResult(
-                success=swarm_result.get("success", False),
-                findings=swarm_result.get("findings", []),
-                errors=swarm_result.get("errors", []),
-                execution_time=swarm_result.get("execution_time", 0),
-                parallelization_factor=1.0,
-            )
 
         # Ergebnis validieren
         if result is None:
@@ -572,22 +837,34 @@ def _serialize_datetime(obj: Any) -> Any:
 
 
 async def list_jobs() -> JSONResponse:
-    """Returns alle Analyse-Jobs."""
+    """Returns alle Analyse-Jobs (enriched mit Findings)."""
     jobs = job_manager.get_all_jobs()
-    
-    # Datetime-Objekte serialisieren
+
+    # Datetime-Objekte serialisieren und Findings anreichern
     serialized_jobs = []
     for job in jobs:
         serialized_job = job.copy()
+        
+        # Datetime-Felder
         if "created_at" in serialized_job and isinstance(serialized_job["created_at"], datetime):
             serialized_job["created_at"] = serialized_job["created_at"].isoformat()
+            serialized_job["started_at"] = serialized_job["created_at"]  # Alias für Dashboard
         if "completed_at" in serialized_job and isinstance(serialized_job["completed_at"], datetime):
             serialized_job["completed_at"] = serialized_job["completed_at"].isoformat()
         if "failed_at" in serialized_job and isinstance(serialized_job["failed_at"], datetime):
             serialized_job["failed_at"] = serialized_job["failed_at"].isoformat()
+        
+        # Findings aus Result extrahieren
+        result = serialized_job.get("result")
+        if result and hasattr(result, 'findings'):
+            serialized_job["findings"] = [f.to_dict() for f in result.findings]
+            serialized_job["execution_time"] = getattr(result, 'execution_time', 0)
+        else:
+            serialized_job["findings"] = []
+        
         serialized_jobs.append(serialized_job)
-    
-    return JSONResponse(content={"jobs": serialized_jobs})
+
+    return JSONResponse(content=serialized_jobs)
 
 
 async def get_job(job_id: str) -> JSONResponse:
@@ -596,17 +873,26 @@ async def get_job(job_id: str) -> JSONResponse:
 
     if not job:
         raise HTTPException(status_code=404, detail="Job nicht gefunden")
-    
+
     # Kopie erstellen und datetime-Objekte serialisieren
     serialized_job = job.copy()
     if "created_at" in serialized_job and isinstance(serialized_job["created_at"], datetime):
         serialized_job["created_at"] = serialized_job["created_at"].isoformat()
+        serialized_job["started_at"] = serialized_job["created_at"]
     if "completed_at" in serialized_job and isinstance(serialized_job["completed_at"], datetime):
         serialized_job["completed_at"] = serialized_job["completed_at"].isoformat()
     if "failed_at" in serialized_job and isinstance(serialized_job["failed_at"], datetime):
         serialized_job["failed_at"] = serialized_job["failed_at"].isoformat()
 
-    return JSONResponse(content={"job": serialized_job})
+    # Findings aus Result extrahieren
+    result = serialized_job.get("result")
+    if result and hasattr(result, 'findings'):
+        serialized_job["findings"] = [f.to_dict() for f in result.findings]
+        serialized_job["execution_time"] = getattr(result, 'execution_time', 0)
+    else:
+        serialized_job["findings"] = []
+
+    return JSONResponse(content=serialized_job)
 
 
 async def get_results(job_id: str) -> AnalysisResult:

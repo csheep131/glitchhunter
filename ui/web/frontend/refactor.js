@@ -34,7 +34,28 @@ class RefactoringManager {
         document.getElementById('applyBtn')?.addEventListener('click', () => this.applyRefactoring());
         document.getElementById('cancelBtn')?.addEventListener('click', () => closePreview());
 
+        // Projekte laden für File-Auswahl
+        this.loadProjectFiles();
+
         console.log('[Refactoring] Initialisierung abgeschlossen');
+    }
+
+    async loadProjectFiles() {
+        try {
+            const res = await fetch('/api/v1/discover/projects');
+            const data = await res.json();
+            if (data.projects && data.projects.length > 0) {
+                const datalist = document.getElementById('refactorFileList');
+                if (datalist) {
+                    datalist.innerHTML = data.projects.map(p =>
+                        `<option value="${p}">${p.replace('/home/schaf/projects/', '')}</option>`
+                    ).join('');
+                    console.log(`[Refactoring] ${data.count} Projekte geladen`);
+                }
+            }
+        } catch (error) {
+            console.error('[Refactoring] Fehler beim Laden der Projektliste:', error);
+        }
     }
 
     /**

@@ -33,7 +33,28 @@ class ProblemSolver {
         document.getElementById('applySolutionBtn')?.addEventListener('click', () => this.applySolution());
         document.getElementById('newProblemBtn')?.addEventListener('click', () => this.reset());
 
+        // Projekte laden
+        this.loadProjectList();
+
         console.log('[Problem] Initialisierung abgeschlossen');
+    }
+
+    async loadProjectList() {
+        try {
+            const res = await fetch('/api/v1/discover/projects');
+            const data = await res.json();
+            if (data.projects && data.projects.length > 0) {
+                const datalist = document.getElementById('projectList');
+                if (datalist) {
+                    datalist.innerHTML = data.projects.map(p =>
+                        `<option value="${p}">${p.replace('/home/schaf/projects/', '')}</option>`
+                    ).join('');
+                    console.log(`[Problem] ${data.count} Projekte geladen`);
+                }
+            }
+        } catch (error) {
+            console.error('[Problem] Fehler beim Laden der Projektliste:', error);
+        }
     }
 
     /**
@@ -213,9 +234,9 @@ class ProblemSolver {
                 this.updateStatus(error || 'Fehler aufgetreten', 'error');
                 this.addLog('Error', error);
                 
-                const btn = document.querySelector('button[type="submit"]');
-                btn.disabled = false;
-                btn.textContent = '❌ Fehler - Erneut versuchen';
+                const errorBtn = document.querySelector('button[type="submit"]');
+                errorBtn.disabled = false;
+                errorBtn.textContent = '❌ Fehler - Erneut versuchen';
                 break;
 
             default:

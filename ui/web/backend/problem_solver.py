@@ -101,11 +101,16 @@ class ProblemSolverService:
         self._active_problems: Dict[str, Dict[str, Any]] = {}
         logger.info("ProblemSolverService initialisiert")
     
-    def _get_problem_manager(self):
+    def _get_problem_manager(self, repo_path: Optional[str] = None):
         """Lädt ProblemManager-Instanz."""
         if self._problem_manager is None:
             from src.problem.manager import ProblemManager
-            self._problem_manager = ProblemManager()
+            glitchhunter_root = Path("/home/schaf/projects/glitchhunter")
+            if repo_path:
+                pm_path = Path(repo_path)
+            else:
+                pm_path = glitchhunter_root
+            self._problem_manager = ProblemManager(repo_path=pm_path)
         return self._problem_manager
     
     async def solve_problem(
@@ -168,6 +173,7 @@ class ProblemSolverService:
         Führt Klassifikation und Diagnose durch.
         
         Hintergrund-Task für asynchrone Verarbeitung.
+        Alle sync-Methoden werden via run_in_executor ausgeführt.
         """
         try:
             pm = self._get_problem_manager()
@@ -178,13 +184,17 @@ class ProblemSolverService:
                 {"message": "Klassifiziere Problem..."}
             )
             
-            classification = await pm.classify_problem(problem_id)
+            loop = asyncio.get_event_loop()
+            
+            classification = await loop.run_in_executor(
+                None, pm.classify_problem, problem_id
+            )
             self._active_problems[problem_id]["classification"] = classification
             
             await self._send_websocket_update(
                 websocket, problem_id, "classified",
                 {
-                    "classification": classification,
+                    "classification": str(classification),
                     "message": f"Problem-Typ: {classification}",
                 }
             )
@@ -196,13 +206,15 @@ class ProblemSolverService:
             )
             
             if request.with_code_analysis:
-                diagnosis = await pm.diagnose_problem(problem_id)
-                self._active_problems[problem_id]["diagnosis"] = diagnosis
+                diagnosis = await loop.run_in_executor(
+                    None, pm.generate_diagnosis, problem_id
+                )
+                self._active_problems[problem_id]["diagnosis"] = str(diagnosis)
                 
                 await self._send_websocket_update(
                     websocket, problem_id, "diagnosed",
                     {
-                        "diagnosis": diagnosis,
+                        "diagnosis": str(diagnosis),
                         "message": "Diagnose abgeschlossen",
                     }
                 )
@@ -213,13 +225,15 @@ class ProblemSolverService:
                 {"message": "Erstelle Lösungsplan..."}
             )
             
-            plan = await pm.create_plan(problem_id)
-            self._active_problems[problem_id]["plan"] = plan
+            plan = await loop.run_in_executor(
+                None, pm.create_solution_plan, problem_id
+            )
+            self._active_problems[problem_id]["plan"] = str(plan)
             
             await self._send_websocket_update(
                 websocket, problem_id, "planned",
                 {
-                    "plan": plan,
+                    "plan": str(plan),
                     "message": "Lösungsplan erstellt",
                 }
             )
@@ -231,25 +245,29 @@ class ProblemSolverService:
                     {"message": "Wende Fix automatisch an..."}
                 )
                 
-                result = await pm.auto_fix(problem_id)
-                self._active_problems[problem_id]["solution"] = result
+                result = await loop.run_in_executor(
+                    None, pm.auto_fix, problem_id
+                )
+                self._active_problems[problem_id]["solution"] = str(result)
                 
                 await self._send_websocket_update(
                     websocket, problem_id, "completed",
                     {
-                        "solution": result,
+                        "solution": str(result),
                         "message": "Problem gelöst",
                     }
                 )
             else:
                 # Manueller Flow - Lösung vorschlagen
-                solution = await pm.generate_solution(problem_id)
-                self._active_problems[problem_id]["solution"] = solution
+                solution = await loop.run_in_executor(
+                    None, pm.create_solution_plan, problem_id
+                )
+                self._active_problems[problem_id]["solution"] = str(solution)
                 
                 await self._send_websocket_update(
                     websocket, problem_id, "completed",
                     {
-                        "solution": solution,
+                        "solution": str(solution),
                         "message": "Lösungsvorschlag erstellt",
                     }
                 )

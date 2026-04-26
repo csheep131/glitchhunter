@@ -1,0 +1,81 @@
+# Git
+.git
+.gitignore
+.github/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtuelle Umgebungen
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+# Daten (nicht ins Image)
+data/
+*.db
+settings.db
+history.db
+
+# Reports
+reports/
+
+# Sandbox
+sandbox/
+
+# Test
+tests/
+*.test.js
+*.spec.js
+
+# Dokumentation
+docs/
+*.md
+!README.md
+!CHANGELOG.md
+!LICENSE
+
+# Scripts (nur notwendige)
+scripts/generate_*.py
+scripts/debug_*.sh
+
+# Temporär
+tmp/
+temp/
+*.tmp
+
+# Node (falls vorhanden)
+node_modules/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore

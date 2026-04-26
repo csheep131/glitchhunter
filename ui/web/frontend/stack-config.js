@@ -1,19 +1,26 @@
 /**
  * GlitchHunter Web-UI - Stack-Konfiguration Manager
- * 
+ *
  * Verwaltet Stack-Konfiguration:
  * - Lokale Stacks (A/B)
  * - Remote-API (Stack C)
- * - Modell-Auswahl
+ * - Modell-Auswahl (stack-übergreifend)
+ * - Eigene Modell-Pfade
  * - API-Verbindung testen
  */
 
 class StackConfigManager {
     constructor() {
         this.apiBase = '/api/v1/stacks';
+        this.modelsApiBase = '/api/v1/models';
         this.currentStack = 'stack_a';
         this.availableModels = [];
-        
+        this.allModelsByStack = {};  // {stack_id: [{id, name, path, ...}, ...]}
+        this.selectedModelPaths = {  // {stack_id: {role: path, ...}}
+            stack_a: { primary: '', secondary: '' },
+            stack_b: { primary: '', secondary: '' },
+        };
+
         this.init();
     }
 
@@ -25,8 +32,24 @@ class StackConfigManager {
             tab.addEventListener('click', (e) => this.switchStack(e.target.dataset.tab));
         });
 
-        // Initiale Ladung
-        this.loadConfig('stack_a');
+        // Initiale Modell-Liste laden
+        this.loadAllModels();
+    }
+
+    async loadAllModels() {
+        /**Lädt alle verfügbaren Modelle nach Stack gruppiert.*/
+        try {
+            const response = await fetch(`${this.modelsApiBase}/by_stack`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            this.allModelsByStack = await response.json();
+            console.log('[StackConfig] Modelle geladen:', this.allModelsByStack);
+
+            // Populiere Selects für aktuellen Stack
+            this.populateModelSelects(this.currentStack);
+        } catch (error) {
+            console.error('[StackConfig] Fehler beim Laden der Modelle:', error);
+        }
     }
 
     switchStack(stackId) {
@@ -51,28 +74,113 @@ class StackConfigManager {
         }
     }
 
+    onModelSelectChange(stackId, role, modelId) {
+        /**Wird aufgerufen wenn ein Modell im Select ausgewählt wird.*/
+        if (!modelId) return;
+
+        // Finde den Pfad des ausgewählten Modells
+        for (const [stack, models] of Object.entries(this.allModelsByStack)) {
+            const model = models.find(m => m.id === modelId);
+            if (model && model.path) {
+                this.selectedModelPaths[stackId][role] = model.path;
+                
+                // Aktualisiere das Pfad-Feld
+                const pathInput = document.getElementById(`${stackId}_${role}_path`);
+                if (pathInput) {
+                    pathInput.value = model.path;
+                }
+                console.log(`[StackConfig] Modell-Pfad für ${stackId}/${role}: ${model.path}`);
+                return;
+            }
+        }
+    }
+
+    populateModelSelects(stackId) {
+        /**Füllt die Modell-Selects mit allen verfügbaren Modellen.
+         * 
+         * Args:
+         *     stackId: Stack-ID (stack_a oder stack_b)
+         */
+        const roles = ['primary', 'secondary'];
+        
+        for (const role of roles) {
+            const selectEl = document.getElementById(`${stackId}_${role}`);
+            if (!selectEl) continue;
+
+            // Aktuelle Auswahl merken
+            const currentValue = selectEl.value;
+
+            // Select leeren
+            selectEl.innerHTML = '<option value="">-- Modell auswählen --</option>';
+
+            // Alle Modelle aus allen Stacks hinzufügen
+            for (const [stack, models] of Object.entries(this.allModelsByStack)) {
+                if (models.length === 0) continue;
+
+                // OptGroup für Stack
+                const optGroup = document.createElement('optgroup');
+                optGroup.label = `📦 ${stack === 'stack_a' ? 'Stack A (GTX 3060)' : stack === 'stack_b' ? 'Stack B (RTX 3090)' : stack}`;
+
+                for (const model of models) {
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    
+                    // Beschreibung mit Pfad-Info
+                    const existsMark = model.exists ? '✓' : '✗';
+                    const sizeInfo = model.size_mb > 0 ? ` (${(model.size_mb / 1024).toFixed(1)} GB)` : '';
+                    option.textContent = `${existsMark} ${model.name}${sizeInfo} [${model.quantization}]`;
+                    option.title = `Pfad: ${model.path || 'Nicht gesetzt'}`;
+                    
+                    optGroup.appendChild(option);
+                }
+
+                selectEl.appendChild(optGroup);
+            }
+
+            // Freie Pfad-Eingabe als letzte Option
+            const customOption = document.createElement('option');
+            customOption.value = '__custom__';
+            customOption.textContent = '✏️ Eigenen Pfad eingeben...';
+            selectEl.appendChild(customOption);
+
+            // Vorherige Auswahl wiederherstellen
+            if (currentValue) {
+                selectEl.value = currentValue;
+            }
+        }
+    }
+
     async loadConfig(stackId) {
         try {
             const response = await fetch(`${this.apiBase}/${stackId}`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            
+
             const config = await response.json();
-            
-            if (stackId === 'stack_a') {
-                document.getElementById('stack_a_mode').value = config.mode || 'sequential';
-                document.getElementById('stack_a_primary').value = config.models?.primary || 'qwen3.5-9b-q4_k_m';
-                document.getElementById('stack_a_secondary').value = config.models?.secondary || 'phi-4-mini-q8';
-                document.getElementById('stack_a_batch').value = config.inference?.max_batch_size || 4;
-                document.getElementById('stack_a_parallel').value = config.inference?.parallel_requests ? 'true' : 'false';
-            }
-            else if (stackId === 'stack_b') {
-                document.getElementById('stack_b_mode').value = config.mode || 'parallel';
-                document.getElementById('stack_b_primary').value = config.models?.primary || 'qwen3.5-27b-q4_k_m';
-                document.getElementById('stack_b_secondary').value = config.models?.secondary || 'deepseek-v3.2-q8';
-                document.getElementById('stack_b_batch').value = config.inference?.max_batch_size || 10;
-                document.getElementById('stack_b_parallel').value = config.inference?.parallel_requests ? 'true' : 'false';
-            }
-            else if (stackId === 'stack_c') {
+
+            if (stackId === 'stack_a' || stackId === 'stack_b') {
+                // Mode setzen
+                const modeEl = document.getElementById(`${stackId}_mode`);
+                if (modeEl) modeEl.value = config.mode || 'sequential';
+
+                // Modell-Pfade aus config laden
+                const modelPaths = config.model_paths || {};
+                for (const [role, path] of Object.entries(modelPaths)) {
+                    this.selectedModelPaths[stackId][role] = path;
+                    const pathInput = document.getElementById(`${stackId}_${role}_path`);
+                    if (pathInput) pathInput.value = path;
+                }
+
+                // Selects befüllen
+                this.populateModelSelects(stackId);
+
+                // Batch und Parallel setzen
+                const batchEl = document.getElementById(`${stackId}_batch`);
+                if (batchEl) batchEl.value = config.inference?.max_batch_size || 4;
+
+                const parallelEl = document.getElementById(`${stackId}_parallel`);
+                if (parallelEl) parallelEl.value = config.inference?.parallel_requests ? 'true' : 'false';
+
+            } else if (stackId === 'stack_c') {
                 // Remote-API Konfiguration
                 const remoteConfig = config.remote || {};
                 document.getElementById('stack_c_api_url').value = remoteConfig.api_url || 'http://asgard-llm:8081/v1';
@@ -82,13 +190,13 @@ class StackConfigManager {
                 document.getElementById('stack_c_rate_limit').value = remoteConfig.rate_limit || 60;
                 document.getElementById('stack_c_batch').value = remoteConfig.max_batch_size || 10;
                 document.getElementById('stack_c_parallel').value = remoteConfig.parallel_requests ? 'true' : 'false';
-                
+
                 // Modelle laden wenn vorhanden
                 if (remoteConfig.available_models) {
                     this.availableModels = remoteConfig.available_models;
                     this.renderAvailableModels();
                     this.populateModelSelects();
-                    
+
                     // Ausgewählte Modelle setzen
                     document.getElementById('stack_c_primary').value = remoteConfig.primary_model || '';
                     document.getElementById('stack_c_secondary').value = remoteConfig.secondary_model || '';
@@ -107,33 +215,31 @@ class StackConfigManager {
         try {
             let updates = {};
 
-            if (stackId === 'stack_a') {
+            if (stackId === 'stack_a' || stackId === 'stack_b') {
+                // Modell-Namen aus Selects
+                const primarySelect = document.getElementById(`${stackId}_primary`);
+                const secondarySelect = document.getElementById(`${stackId}_secondary`);
+                const primaryPathInput = document.getElementById(`${stackId}_primary_path`);
+                const secondaryPathInput = document.getElementById(`${stackId}_secondary_path`);
+
                 updates = {
-                    mode: document.getElementById('stack_a_mode').value,
+                    mode: document.getElementById(`${stackId}_mode`).value,
                     models: {
-                        primary: document.getElementById('stack_a_primary').value,
-                        secondary: document.getElementById('stack_a_secondary').value,
+                        primary: primarySelect?.value || '',
+                        secondary: secondarySelect?.value || '',
+                    },
+                    model_paths: {
+                        primary: primaryPathInput?.value || this.selectedModelPaths[stackId]?.primary || '',
+                        secondary: secondaryPathInput?.value || this.selectedModelPaths[stackId]?.secondary || '',
                     },
                     inference: {
-                        max_batch_size: parseInt(document.getElementById('stack_a_batch').value),
-                        parallel_requests: document.getElementById('stack_a_parallel').value === 'true',
+                        max_batch_size: parseInt(document.getElementById(`${stackId}_batch`).value),
+                        parallel_requests: document.getElementById(`${stackId}_parallel`).value === 'true',
                     },
                 };
-            }
-            else if (stackId === 'stack_b') {
-                updates = {
-                    mode: document.getElementById('stack_b_mode').value,
-                    models: {
-                        primary: document.getElementById('stack_b_primary').value,
-                        secondary: document.getElementById('stack_b_secondary').value,
-                    },
-                    inference: {
-                        max_batch_size: parseInt(document.getElementById('stack_b_batch').value),
-                        parallel_requests: document.getElementById('stack_b_parallel').value === 'true',
-                    },
-                };
-            }
-            else if (stackId === 'stack_c') {
+
+                console.log(`[StackConfig] Speichere ${stackId}:`, updates);
+            } else if (stackId === 'stack_c') {
                 updates = {
                     remote: {
                         api_url: document.getElementById('stack_c_api_url').value,
@@ -157,6 +263,27 @@ class StackConfigManager {
             });
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            // Wenn eigene Pfade eingegeben wurden, auch separat speichern
+            if (stackId === 'stack_a' || stackId === 'stack_b') {
+                for (const role of ['primary', 'secondary']) {
+                    const pathInput = document.getElementById(`${stackId}_${role}_path`);
+                    if (pathInput && pathInput.value) {
+                        try {
+                            await fetch(`${this.apiBase}/${stackId}/model_path`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    role: role,
+                                    path: pathInput.value,
+                                }),
+                            });
+                        } catch (e) {
+                            console.warn(`[StackConfig] Konnte Pfad für ${stackId}/${role} nicht separat speichern:`, e);
+                        }
+                    }
+                }
+            }
 
             alert(`✅ Konfiguration für ${stackId} gespeichert!`);
             console.log(`[StackConfig] Konfiguration gespeichert für ${stackId}`);

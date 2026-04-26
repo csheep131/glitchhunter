@@ -67,8 +67,14 @@
                     <input 
                         type="text" 
                         id="repoPath" 
+                        list="projectList"
                         placeholder="/home/schaf/projects/glitchhunter"
+                        onclick="this.showPicker()"
+                        autocomplete="off"
                     >
+                    <datalist id="projectList">
+                        <option value="/home/schaf/projects/glitchhunter">🔄 Lädt Projekte...</option>
+                    </datalist>
                 </div>
 
                 <div class="form-group full-width">

@@ -53,20 +53,21 @@
 
                 <div class="config-section">
                     <h3>🤖 Modelle</h3>
+                    <p class="help-text">Alle verfügbaren Modelle aus Stack A und Stack B sind auswählbar. Eigene Pfade können frei eingegeben werden.</p>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Primäres Modell:</label>
-                            <select id="stack_a_primary">
-                                <option value="qwen3.5-9b-q4_k_m">Qwen3.5-9B (4-bit)</option>
-                                <option value="phi-4-mini-q8">Phi-4-mini (8-bit)</option>
+                            <select id="stack_a_primary" onchange="stackConfigManager.onModelSelectChange('stack_a', 'primary', this.value)">
+                                <option value="">-- Wird geladen --</option>
                             </select>
+                            <input type="text" id="stack_a_primary_path" placeholder="Oder eigenen Pfad eingeben..." style="margin-top: 8px;" list="projectModelList" onclick="this.showPicker()">
                         </div>
                         <div class="form-group">
                             <label>Sekundäres Modell:</label>
-                            <select id="stack_a_secondary">
-                                <option value="phi-4-mini-q8">Phi-4-mini (8-bit)</option>
-                                <option value="qwen3.5-9b-q4_k_m">Qwen3.5-9B (4-bit)</option>
+                            <select id="stack_a_secondary" onchange="stackConfigManager.onModelSelectChange('stack_a', 'secondary', this.value)">
+                                <option value="">-- Wird geladen --</option>
                             </select>
+                            <input type="text" id="stack_a_secondary_path" placeholder="Oder eigenen Pfad eingeben..." style="margin-top: 8px;" list="projectModelList" onclick="this.showPicker()">
                         </div>
                     </div>
                 </div>
@@ -121,20 +122,21 @@
 
                 <div class="config-section">
                     <h3>🤖 Modelle</h3>
+                    <p class="help-text">Alle verfügbaren Modelle aus Stack A und Stack B sind auswählbar. Eigene Pfade können frei eingegeben werden.</p>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Primäres Modell:</label>
-                            <select id="stack_b_primary">
-                                <option value="qwen3.5-27b-q4_k_m">Qwen3.5-27B (4-bit)</option>
-                                <option value="deepseek-v3.2-q8">DeepSeek-V3.2 (8-bit)</option>
+                            <select id="stack_b_primary" onchange="stackConfigManager.onModelSelectChange('stack_b', 'primary', this.value)">
+                                <option value="">-- Wird geladen --</option>
                             </select>
+                            <input type="text" id="stack_b_primary_path" placeholder="Oder eigenen Pfad eingeben..." style="margin-top: 8px;" list="projectModelList" onclick="this.showPicker()">
                         </div>
                         <div class="form-group">
                             <label>Sekundäres Modell:</label>
-                            <select id="stack_b_secondary">
-                                <option value="deepseek-v3.2-q8">DeepSeek-V3.2 (8-bit)</option>
-                                <option value="qwen3.5-27b-q4_k_m">Qwen3.5-27B (4-bit)</option>
+                            <select id="stack_b_secondary" onchange="stackConfigManager.onModelSelectChange('stack_b', 'secondary', this.value)">
+                                <option value="">-- Wird geladen --</option>
                             </select>
+                            <input type="text" id="stack_b_secondary_path" placeholder="Oder eigenen Pfad eingeben..." style="margin-top: 8px;" list="projectModelList" onclick="this.showPicker()">
                         </div>
                     </div>
                 </div>

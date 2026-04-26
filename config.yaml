@@ -11,16 +11,16 @@ hardware:
     
     models:
       primary:
-        name: "qwen3.5-9b"
-        path: "/home/schaf/stuff/offline_llm/models/Qwen3.5-9B-UncensoredHauhauCS-Aggressive-Q4_K_M.gguf"
+        name: "deepseek-coder-v2-lite"
+        path: "/home/schaf/modelle/deepseek-coder-v2-lite-instruct-gguf/DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf"
         context_length: 8192
         n_gpu_layers: 35
         n_threads: 8
-      
+
       secondary:
-        name: "phi-4-mini"
-        path: "models/phi-4-mini-instruct.Q4_K_M.gguf"
-        context_length: 4096
+        name: "qwen3.6-28b-reap20"
+        path: "/home/schaf/modelle/qwen3.6-28b-reap20-a3b-gguf/Qwen3.6-28B-REAP20-A3B-Q4_K_M.gguf"
+        context_length: 8192
         n_gpu_layers: 25
         n_threads: 6
     
@@ -47,15 +47,15 @@ hardware:
     
     models:
       primary:
-        name: "qwen3.5-27b"
-        path: "models/Qwen3.5-27B-Instruct-Q4_K_M.gguf"
+        name: "qwen3.6-28b-reap20"
+        path: "/home/schaf/modelle/qwen3.6-28b-reap20-a3b-gguf/Qwen3.6-28B-REAP20-A3B-Q4_K_M.gguf"
         context_length: 16384
         n_gpu_layers: 50
         n_threads: 12
-      
+
       secondary:
-        name: "deepseek-v3.2-small"
-        path: "models/DeepSeek-V3.2-Small-Q4_K_M.gguf"
+        name: "deepseek-coder-v2-lite"
+        path: "/home/schaf/modelle/deepseek-coder-v2-lite-instruct-gguf/DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf"
         context_length: 8192
         n_gpu_layers: 40
         n_threads: 10
@@ -314,7 +314,7 @@ evidence_gate:
 
 # Pfade
 paths:
-  models: "models"
+  models: "/home/schaf/modelle"
   logs: "logs"
   reports: "reports"
   cache: ".cache"

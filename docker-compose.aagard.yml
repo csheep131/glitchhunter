@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  glitchhunter:
+    build:
+      context: .
+      dockerfile: Dockerfile.webui
+    image: glitchhunter:aagard
+    container_name: glitchhunter
+    ports:
+      - "6262:6262"
+    # FUSE für SSHFS
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
+    security_opt:
+      - apparmor=unconfined
+      - seccomp=unconfined
+    
+    volumes:
+      # Lokale Modelle vom Host einbinden
+      - /home/schaf/modelle:/app/models:ro
+      # Projekte für Discovery einbinden
+      - /home/schaf/projects:/home/schaf/projects:ro
+      # SSH-Keys für SSHFS Remote-Mounts
+      - /home/schaf/.ssh:/root/.ssh:ro
+      # Persistente Daten
+      - gh-data:/app/data
+      - gh-logs:/app/logs
+      - gh-cache:/app/cache
+      - gh-reports:/app/reports
+      # Konfiguration
+      - ./config.aagard.yaml:/app/config.yaml:ro
+    environment:
+      - GLITCHHUNTER_HOME=/app
+      - GLITCHHUNTER_DATA=/app/data
+      - GLITCHHUNTER_LOGS=/app/logs
+      - GLITCHHUNTER_CACHE=/app/cache
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      # Lokale Inference aktivieren
+      - USE_LOCAL_MODELS=true
+      - MODEL_BASE_PATH=/app/models
+    restart: unless-stopped
+    network_mode: bridge
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  gh-data:
+  gh-logs:
+  gh-cache:
+  gh-reports:

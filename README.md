@@ -20,7 +20,7 @@ GlitchHunter ist ein KI-gestütztes Code-Analyse-Tool das **statische Analyse**,
 
 Python, JavaScript, TypeScript, Rust, Go, Java, C/C++, C
 
-## Installation
+## 📦 Installation
 
 ### Voraussetzungen
 
@@ -47,6 +47,21 @@ pip install -e .
 # Optional: One-Click Binary bauen
 ./scripts/build_binaries.sh
 ```
+
+### Docker Deployment
+
+```bash
+# Build
+bash scripts/docker_build.sh
+
+# Start
+bash scripts/docker_start.sh
+
+# Oder mit Docker Compose
+docker compose up -d
+```
+
+**Detaillierte Docker-Anleitung:** [docs/DOCKER_DEPLOYMENT.md](docs/DOCKER_DEPLOYMENT.md)
 
 ## Verwendung
 

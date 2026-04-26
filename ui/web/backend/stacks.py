@@ -2,7 +2,7 @@
 Stack-Manager für GlitchHunter Web-UI.
 
 Verwaltet Hardware-Stacks (A, B, C) mit:
-- Konfiguration
+- Konfiguration (geladen aus config.yaml)
 - Status-Überwachung
 - Testing
 - Model-Management
@@ -12,10 +12,12 @@ Features:
 - Hardware-Detektion
 - Model-Loading/Unloading
 - Stack-Testing
+- Dynamische Konfiguration aus config.yaml
 """
 
 import asyncio
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -23,6 +25,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
+# Projekt-Root Verzeichnis (2 Ebenen hoch von ui/web/backend/)
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 
 @dataclass
@@ -34,10 +39,13 @@ class StackConfig:
     hardware: str
     mode: str
     models: Dict[str, str]
-    security: Dict[str, Any]
-    inference: Dict[str, Any]
+    model_paths: Dict[str, str] = field(default_factory=dict)  # Modell-ID -> Pfad
+    security: Dict[str, Any] = field(default_factory=dict)
+    inference: Dict[str, Any] = field(default_factory=dict)
     enabled: bool = True
     priority: int = 1
+    vram_limit: int = 0
+    cuda_compute: str = ""
 
 
 @dataclass
@@ -91,56 +99,102 @@ class StackManager:
         
         logger.info("StackManager initialisiert")
     
-    def initialize(self):
-        """Initialisiert alle Stacks."""
+    def initialize(self, config=None):
+        """Initialisiert alle Stacks.
+        
+        Args:
+            config: Optional Config-Objekt aus config.yaml. 
+                    Wenn None, wird config.yaml automatisch geladen.
+        """
         logger.info("Initialisiere Stacks...")
-        
-        # Stack A: Standard (GTX 3060)
-        self._stacks["stack_a"] = StackConfig(
-            id="stack_a",
-            name="Stack A (Standard)",
-            description="Sequenzielle Analyse mit GTX 3060 (8GB)",
-            hardware="GTX 3060 (8GB VRAM)",
-            mode="sequential",
-            models={
-                "primary": "qwen3.5-9b-q4_k_m",
-                "secondary": "phi-4-mini-q8",
-            },
-            security={
-                "enabled": True,
-                "level": "full",
-                "owasp_top10": True,
-            },
-            inference={
-                "max_batch_size": 4,
-                "parallel_requests": False,
-            },
-            priority=1,
-        )
-        
-        # Stack B: Enhanced (RTX 3090)
-        self._stacks["stack_b"] = StackConfig(
-            id="stack_b",
-            name="Stack B (Enhanced)",
-            description="Parallele Analyse mit RTX 3090 (24GB)",
-            hardware="RTX 3090 (24GB VRAM)",
-            mode="parallel",
-            models={
-                "primary": "qwen3.5-27b-q4_k_m",
-                "secondary": "deepseek-v3.2-q8",
-            },
-            security={
-                "enabled": True,
-                "level": "full",
-            },
-            inference={
-                "max_batch_size": 10,
-                "parallel_requests": True,
-            },
-            priority=2,
-        )
-        
-        # Stack C: Remote API
+
+        # Config laden wenn nicht übergeben
+        if config is None:
+            try:
+                import sys
+                sys.path.insert(0, str(_PROJECT_ROOT / "src"))
+                from core.config import Config
+                config = Config.load(_PROJECT_ROOT / "config.yaml")
+                logger.info(f"Config aus {_PROJECT_ROOT / 'config.yaml'} geladen")
+            except Exception as e:
+                logger.warning(f"Konnte config.yaml nicht laden ({e}), verwende Fallback-Konfiguration")
+                config = None
+
+        # Stack A aus config.yaml laden
+        if config and "stack_a" in config.hardware:
+            hw = config.hardware["stack_a"]
+            self._stacks["stack_a"] = self._create_stack_from_config(
+                stack_id="stack_a",
+                name="Stack A (Standard)",
+                description=f"Sequenzielle Analyse mit {hw.name} ({hw.vram_limit}GB)",
+                hardware=hw.name,
+                mode=hw.mode,
+                models=hw.models,
+                security=hw.security,
+                inference=hw.inference,
+                vram_limit=hw.vram_limit,
+                cuda_compute=hw.cuda_compute,
+            )
+        else:
+            # Fallback
+            self._stacks["stack_a"] = StackConfig(
+                id="stack_a",
+                name="Stack A (Standard)",
+                description="Sequenzielle Analyse mit GTX 3060 (8GB)",
+                hardware="GTX 3060 (8GB VRAM)",
+                mode="sequential",
+                models={
+                    "primary": "qwen3.5-9b",
+                    "secondary": "phi-4-mini",
+                },
+                model_paths={
+                    "primary": str(_PROJECT_ROOT / "models" / "Qwen3.5-9B-UncensoredHauhauCS-Aggressive-Q4_K_M.gguf"),
+                    "secondary": str(_PROJECT_ROOT / "models" / "phi-4-mini-instruct.Q4_K_M.gguf"),
+                },
+                security={"enabled": True, "level": "lite", "owasp_top10": True},
+                inference={"max_batch_size": 1, "parallel_requests": False},
+                vram_limit=8,
+                priority=1,
+            )
+
+        # Stack B aus config.yaml laden
+        if config and "stack_b" in config.hardware:
+            hw = config.hardware["stack_b"]
+            self._stacks["stack_b"] = self._create_stack_from_config(
+                stack_id="stack_b",
+                name="Stack B (Enhanced)",
+                description=f"Parallele Analyse mit {hw.name} ({hw.vram_limit}GB)",
+                hardware=hw.name,
+                mode=hw.mode,
+                models=hw.models,
+                security=hw.security,
+                inference=hw.inference,
+                vram_limit=hw.vram_limit,
+                cuda_compute=hw.cuda_compute,
+            )
+        else:
+            # Fallback
+            self._stacks["stack_b"] = StackConfig(
+                id="stack_b",
+                name="Stack B (Enhanced)",
+                description="Parallele Analyse mit RTX 3090 (24GB)",
+                hardware="RTX 3090 (24GB VRAM)",
+                mode="parallel",
+                models={
+                    "primary": "qwen3.5-27b",
+                    "secondary": "deepseek-v3.2-small",
+                },
+                model_paths={
+                    "primary": str(_PROJECT_ROOT / "models" / "Qwen3.5-27B-Instruct-Q4_K_M.gguf"),
+                    "secondary": str(_PROJECT_ROOT / "models" / "DeepSeek-V3.2-Small-Q4_K_M.gguf"),
+                },
+                security={"enabled": True, "level": "full"},
+                inference={"max_batch_size": 4, "parallel_requests": True},
+                vram_limit=24,
+                priority=2,
+            )
+
+        # Stack C: Remote API (immer hardcoded, da nicht in config.yaml)
         self._stacks["stack_c"] = StackConfig(
             id="stack_c",
             name="Stack C (Remote API)",
@@ -154,26 +208,83 @@ class StackManager:
                 "anthropic": "claude-3-5-sonnet-20241022",
                 "deepseek": "deepseek-chat",
             },
-            security={
-                "enabled": True,
-                "level": "full",
-            },
-            inference={
-                "max_batch_size": 10,
-                "parallel_requests": True,
-                "remote_enabled": True,
-            },
+            security={"enabled": True, "level": "full"},
+            inference={"max_batch_size": 10, "parallel_requests": True, "remote_enabled": True},
             priority=3,
         )
-        
+
         # Initiale Status setzen
         for stack_id in self._stacks:
             self._status[stack_id] = StackStatus(
                 id=stack_id,
                 status="offline",  # Wird bei erstem Check aktualisiert
             )
-        
+
         logger.info(f"{len(self._stacks)} Stacks initialisiert")
+
+    def _create_stack_from_config(
+        self,
+        stack_id: str,
+        name: str,
+        description: str,
+        hardware: str,
+        mode: str,
+        models: Dict[str, Any],
+        security: Dict[str, Any],
+        inference: Dict[str, Any],
+        vram_limit: int = 0,
+        cuda_compute: str = "",
+    ) -> StackConfig:
+        """Erstellt StackConfig aus config.yaml Daten.
+        
+        Args:
+            stack_id: Stack-ID
+            name: Anzeigename
+            description: Beschreibung
+            hardware: Hardware-Name
+            mode: Ausführungsmodus
+            models: Modell-Dict aus config.yaml
+            security: Security-Konfiguration
+            inference: Inference-Konfiguration
+            vram_limit: VRAM-Limit in GB
+            cuda_compute: CUDA Compute Capability
+            
+        Returns:
+            StackConfig instance
+        """
+        # Modell-Namen und Pfade extrahieren
+        model_names = {}
+        model_paths = {}
+        
+        for role, model_data in models.items():
+            if isinstance(model_data, dict):
+                model_name = model_data.get("name", role)
+                model_path = model_data.get("path", "")
+                
+                # Pfad relativ zu Projekt-Root auflösen
+                if model_path and not Path(model_path).is_absolute():
+                    model_path = str(_PROJECT_ROOT / model_path)
+                
+                model_names[role] = model_name
+                model_paths[role] = model_path
+            else:
+                model_names[role] = str(model_data)
+                model_paths[role] = ""
+
+        return StackConfig(
+            id=stack_id,
+            name=name,
+            description=description,
+            hardware=hardware,
+            mode=mode,
+            models=model_names,
+            model_paths=model_paths,
+            security=security,
+            inference=inference,
+            vram_limit=vram_limit,
+            cuda_compute=cuda_compute,
+            priority=1 if stack_id == "stack_a" else 2,
+        )
     
     def get_all_stacks(self) -> List[StackConfig]:
         """
@@ -199,22 +310,65 @@ class StackManager:
     def update_stack_config(self, stack_id: str, updates: Dict[str, Any]):
         """
         Aktualisiert Stack-Konfiguration.
-        
+
         Args:
             stack_id: Stack-ID
             updates: Updates-Dict
         """
         if stack_id not in self._stacks:
             raise ValueError(f"Stack {stack_id} nicht gefunden")
-        
+
         stack = self._stacks[stack_id]
-        
+
+        # Spezielle Behandlung für model_paths
+        if "model_paths" in updates:
+            for role, path in updates["model_paths"].items():
+                if path:  # Nur wenn Pfad nicht leer
+                    stack.model_paths[role] = path
+            del updates["model_paths"]  # Nicht noch einmal via setattr
+
+        # Spezielle Behandlung für models (nur Namen, nicht Pfade)
+        if "models" in updates and isinstance(updates["models"], dict):
+            for role, name in updates["models"].items():
+                if role in stack.models:
+                    stack.models[role] = name
+            del updates["models"]
+
         # Felder aktualisieren
         for key, value in updates.items():
             if hasattr(stack, key):
                 setattr(stack, key, value)
-        
+
         logger.info(f"Stack {stack_id} Konfiguration aktualisiert")
+
+    def update_model_path(self, stack_id: str, role: str, path: str):
+        """
+        Aktualisiert den Pfad eines Modells für einen Stack.
+        
+        Args:
+            stack_id: Stack-ID
+            role: Modell-Rolle (primary, secondary)
+            path: Neuer Pfad zum Modell
+        """
+        if stack_id not in self._stacks:
+            raise ValueError(f"Stack {stack_id} nicht gefunden")
+        
+        stack = self._stacks[stack_id]
+        stack.model_paths[role] = path
+        logger.info(f"Stack {stack_id} Modell-Pfad für '{role}' aktualisiert: {path}")
+
+    def get_all_model_paths(self) -> Dict[str, Dict[str, str]]:
+        """
+        Returns alle Modell-Pfade aller Stacks.
+        
+        Returns:
+            Dict: {stack_id: {role: path, ...}, ...}
+        """
+        result = {}
+        for stack_id, stack in self._stacks.items():
+            if stack.model_paths:
+                result[stack_id] = dict(stack.model_paths)
+        return result
     
     def get_stack_status(self, stack_id: str) -> Optional[StackStatus]:
         """

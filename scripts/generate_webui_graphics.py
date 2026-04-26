@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-GLITCHHUNTER GRAPHICS GENERATOR V1.0
+GLITCHHUNTER GRAPHICS GENERATOR V2.0
 Generiert alle Grafiken für die GlitchHunter Web-UI
-Nordic/Cyber-Stil in Sand/Gold/Grün (GlitchHunter Farben)
+Clean Nordic/Cyber-Stil in Sand/Gold/Grün — minimalistisch, modern, praktisch
 """
 
 import sys
@@ -29,294 +29,229 @@ MODELS = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
-# NAVIGATION ICONS (10 Seiten)
+# NAVIGATION ICONS (10 Seiten) — Clean, minimalistisch, 128x128
 # ═══════════════════════════════════════════════════════════════════════════
 
 NAV_ICONS = {
-    # Haupt-Dashboard
     "icon_dashboard": {
-        "prompt": "cyberpunk dashboard control center, holographic display with multiple screens showing code analysis graphs, sand colored interface with neon green accents, futuristic command center, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "icon_dashboard.png",
+        "prompt": "minimalist dashboard icon, clean geometric grid layout with 4 panels, sand gold color with subtle green accent, flat design, transparent background, 128x128, modern UI icon style",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "nav/dashboard.png",
         "description": "Dashboard - Hauptübersicht"
     },
 
-    # Problemlöser
     "icon_problem": {
-        "prompt": "cyberpunk brain with glowing neural networks, sand colored brain with neon green synapses, problem solving symbol, lightbulb made of circuits, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "icon_problem.png",
+        "prompt": "minimalist brain icon with circuit patterns, sand gold with green glow, clean geometric lines, transparent background, 128x128, modern UI icon style",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "nav/problem.png",
         "description": "Problemlöser - KI-Analyse"
     },
 
-    # Refactoring
     "icon_refactor": {
-        "prompt": "cyberpunk hammer and chisel crossing, golden tools with neon green glow, code refactoring symbol, geometric patterns, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "icon_refactor.png",
+        "prompt": "minimalist wrench and code brackets icon, sand gold with green accent, clean lines, transparent background, 128x128, modern UI icon style",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "nav/refactor.png",
         "description": "Refactoring - Code verbessern"
     },
 
-    # Reports
     "icon_reports": {
-        "prompt": "cyberpunk scroll unfurling, ancient runic tablet with holographic display, sand colored parchment with neon green text, data visualization, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "icon_reports.png",
+        "prompt": "minimalist document with chart icon, sand gold with green data bars, clean flat design, transparent background, 128x128, modern UI icon style",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "nav/reports.png",
         "description": "Reports - Berichte"
     },
 
-    # History
     "icon_history": {
-        "prompt": "cyberpunk hourglass with digital sand flowing, golden hourglass with neon green glow, time tracking symbol, ancient meets future, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "icon_history.png",
+        "prompt": "minimalist clock with timeline icon, sand gold with green markers, clean geometric design, transparent background, 128x128, modern UI icon style",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "nav/history.png",
         "description": "History - Verlauf"
     },
 
-    # Stacks
     "icon_stacks": {
-        "prompt": "cyberpunk server racks stacked vertically, golden servers with neon green status lights, hardware stack symbol, data center aesthetic, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "icon_stacks.png",
+        "prompt": "minimalist stacked server icon, sand gold with green status dots, clean geometric cubes, transparent background, 128x128, modern UI icon style",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "nav/stacks.png",
         "description": "Stacks - Hardware-Konfiguration"
     },
 
-    # Models
     "icon_models": {
-        "prompt": "cyberpunk robot head portrait, golden android with neon green eyes, AI model symbol, neural network patterns on face, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "icon_models.png",
+        "prompt": "minimalist AI robot head icon, sand gold with green eyes, clean geometric design, transparent background, 128x128, modern UI icon style",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "nav/models.png",
         "description": "Models - KI-Modelle"
     },
 
-    # Testing
     "icon_testing": {
-        "prompt": "cyberpunk test tube and beaker, golden laboratory glassware with neon green liquid, testing symbol, scientific aesthetic, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "icon_testing.png",
+        "prompt": "minimalist test tube with checkmark icon, sand gold with green liquid, clean laboratory design, transparent background, 128x128, modern UI icon style",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "nav/testing.png",
         "description": "Testing - Stack-Tests"
     },
 
-    # Hardware
     "icon_hardware": {
-        "prompt": "cyberpunk gpu graphics card, golden circuit board with neon green accents, hardware monitoring symbol, tech aesthetic, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "icon_hardware.png",
+        "prompt": "minimalist GPU chip icon, sand gold with green circuit traces, clean tech design, transparent background, 128x128, modern UI icon style",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "nav/hardware.png",
         "description": "Hardware - Ressourcen"
     },
 
-    # Settings
     "icon_settings": {
-        "prompt": "cyberpunk gear cog wheel, golden mechanical gear with neon green teeth, settings symbol, precision engineering, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "icon_settings.png",
+        "prompt": "minimalist gear cog icon, sand gold with clean teeth, precise mechanical design, transparent background, 128x128, modern UI icon style",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "nav/settings.png",
         "description": "Settings - Einstellungen"
     },
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
-# STATUS INDICATORS
+# STATUS INDICATORS — Clean, 64x64
 # ═══════════════════════════════════════════════════════════════════════════
 
 STATUS_ICONS = {
     "status_online": {
-        "prompt": "cyberpunk status indicator dot, glowing neon green circle, online status, pulsing light, 1:1 icon, minimal design",
-        "width": 32, "height": 32, "steps": 15,
-        "filename": "status_online.png",
+        "prompt": "minimalist green circle status indicator, soft glow, clean dot, transparent background, 64x64",
+        "width": 64, "height": 64, "steps": 15,
+        "filename": "status/online.png",
         "description": "Status - Online"
     },
 
     "status_offline": {
-        "prompt": "cyberpunk status indicator dot, dim gray circle, offline status, dark minimal, 1:1 icon, minimal design",
-        "width": 32, "height": 32, "steps": 15,
-        "filename": "status_offline.png",
+        "prompt": "minimalist gray circle status indicator, muted color, clean dot, transparent background, 64x64",
+        "width": 64, "height": 64, "steps": 15,
+        "filename": "status/offline.png",
         "description": "Status - Offline"
     },
 
     "status_error": {
-        "prompt": "cyberpunk status indicator dot, glowing red circle, error status, warning light, 1:1 icon, minimal design",
-        "width": 32, "height": 32, "steps": 15,
-        "filename": "status_error.png",
+        "prompt": "minimalist red circle status indicator, soft glow, clean dot, transparent background, 64x64",
+        "width": 64, "height": 64, "steps": 15,
+        "filename": "status/error.png",
         "description": "Status - Error"
     },
 
     "status_warning": {
-        "prompt": "cyberpunk status indicator dot, glowing orange circle, warning status, caution light, 1:1 icon, minimal design",
-        "width": 32, "height": 32, "steps": 15,
-        "filename": "status_warning.png",
+        "prompt": "minimalist orange circle status indicator, soft glow, clean dot, transparent background, 64x64",
+        "width": 64, "height": 64, "steps": 15,
+        "filename": "status/warning.png",
         "description": "Status - Warning"
     },
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
-# FEATURE GRAFICS (für Cards/Sections)
+# FEATURE GRAFICS — Clean, 128x128
 # ═══════════════════════════════════════════════════════════════════════════
 
 FEATURE_GRAPHICS = {
-    # GlitchHunter Logo Variant
     "logo_small": {
-        "prompt": "cyberpunk glitch hunter logo, stylized bug insect made of circuits, golden beetle with neon green eyes, geometric logo design, clean minimal, 1:1 logo, nordic cyber style",
+        "prompt": "minimalist beetle icon made of clean geometric shapes, sand gold with green eyes, flat design, transparent background, 128x128, modern logo",
         "width": 128, "height": 128, "steps": 25,
-        "filename": "logo_small.png",
+        "filename": "logo/logo_small.png",
         "description": "Logo - Klein"
     },
 
-    # Analysis Complete
     "analysis_complete": {
-        "prompt": "cyberpunk checkmark badge, golden shield with neon green check, analysis complete symbol, success indicator, 1:1 icon, nordic cyber style",
-        "width": 96, "height": 96, "steps": 20,
-        "filename": "analysis_complete.png",
+        "prompt": "minimalist shield with green checkmark, sand gold border, clean success badge, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "status/analysis_complete.png",
         "description": "Analyse abgeschlossen"
     },
 
-    # Analysis Running
     "analysis_running": {
-        "prompt": "cyberpunk loading spinner, golden circular progress indicator with neon green glow, analysis in progress, spinning arcs, 1:1 icon, nordic cyber style",
-        "width": 96, "height": 96, "steps": 20,
-        "filename": "analysis_running.png",
+        "prompt": "minimalist circular progress spinner, sand gold arc with green glow, clean loading indicator, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "status/analysis_running.png",
         "description": "Analyse läuft"
     },
 
-    # Bug Found
     "bug_found": {
-        "prompt": "cyberpunk bug alert symbol, golden warning triangle with neon green bug icon, code issue detected, alert badge, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "bug_found.png",
+        "prompt": "minimalist bug icon in warning triangle, sand gold with green accent, clean alert symbol, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "empty_states/bug_found.png",
         "description": "Bug gefunden"
     },
 
-    # Security Shield
     "security_shield": {
-        "prompt": "cyberpunk security shield, golden protective barrier with neon green runic patterns, defense symbol, cybersecurity, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "security_shield.png",
+        "prompt": "minimalist security shield icon, sand gold with green runic pattern, clean protection symbol, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "decorative/security_shield.png",
         "description": "Security Shield"
     },
 
-    # Performance Speed
     "performance_speed": {
-        "prompt": "cyberpunk speedometer gauge, golden dial with neon green needle in high zone, performance boost symbol, velocity, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "performance_speed.png",
+        "prompt": "minimalist speedometer gauge, sand gold dial with green needle, clean performance symbol, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "decorative/performance_speed.png",
         "description": "Performance Boost"
     },
 
-    # AI Brain
     "ai_brain": {
-        "prompt": "cyberpunk artificial intelligence brain, golden neural network with glowing neon green connections, machine learning symbol, deep learning, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "ai_brain.png",
+        "prompt": "minimalist brain icon with neural network dots, sand gold with green connections, clean AI symbol, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "decorative/ai_brain.png",
         "description": "AI/ML Symbol"
     },
 
-    # Code File
     "code_file": {
-        "prompt": "cyberpunk code file document, golden scroll with neon green code lines, source code symbol, programming, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "code_file.png",
+        "prompt": "minimalist code file icon with brackets, sand gold with green syntax lines, clean document symbol, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "decorative/code_file.png",
         "description": "Code File"
     },
 
-    # Database
     "database": {
-        "prompt": "cyberpunk database cylinder, golden storage unit with neon green data streams, database symbol, data storage, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "database.png",
+        "prompt": "minimalist database cylinder icon, sand gold with green data streams, clean storage symbol, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "decorative/database.png",
         "description": "Database"
     },
 
-    # API Connection
     "api_connection": {
-        "prompt": "cyberpunk network connection nodes, golden nodes connected by neon green lines, API symbol, distributed network, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "api_connection.png",
+        "prompt": "minimalist network nodes icon, sand gold nodes with green connections, clean API symbol, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "decorative/api_connection.png",
         "description": "API Connection"
     },
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
-# DECORATIVE GRAPHICS (zum Aufhübschen)
+# DECORATIVE GRAPHICS — Clean, subtle
 # ═══════════════════════════════════════════════════════════════════════════
 
 DECORATIVE_GRAPHICS = {
-    # Yggdrasil Tree (Background Element)
-    "yggdrasil_small": {
-        "prompt": "cyberpunk yggdrasil world tree, golden tree with neon green leaves and roots, nine realms connected by branches, nordic tree of life, wide landscape, nordic cyber style",
-        "width": 512, "height": 256, "steps": 30,
-        "filename": "yggdrasil_small.png",
-        "description": "Yggdrasil - Deko"
-    },
-
-    # Bifrost Bridge (Divider)
-    "bifrost_divider": {
-        "prompt": "cyberpunk bifrost rainbow bridge, golden bridge with neon green energy arcs, asgard connector, horizontal divider, nordic cyber style",
-        "width": 800, "height": 100, "steps": 25,
-        "filename": "bifrost_divider.png",
-        "description": "Bifrost - Divider"
-    },
-
-    # Runes Pattern (Background)
-    "runes_pattern": {
-        "prompt": "cyberpunk runic alphabet pattern, golden ancient runes with neon green glow, repeating background pattern, nordic symbols, seamless texture, nordic cyber style",
-        "width": 512, "height": 512, "steps": 25,
-        "filename": "runes_pattern.png",
-        "description": "Runes - Pattern"
-    },
-
-    # Circuit Board (Background)
-    "circuit_board": {
-        "prompt": "cyberpunk circuit board texture, golden PCB with neon green traces, tech background, electronic patterns, seamless texture, nordic cyber style",
-        "width": 512, "height": 512, "steps": 25,
-        "filename": "circuit_board.png",
-        "description": "Circuit - Background"
-    },
-
-    # Loading Spinner
     "loading_spinner": {
-        "prompt": "cyberpunk loading animation frame, golden rotating circle with neon green segments, progress indicator, spinner animation frame, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "loading_spinner.png",
+        "prompt": "minimalist loading spinner, sand gold rotating arc with green glow, clean circular progress, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "status/loading_spinner.png",
         "description": "Loading Spinner"
     },
 
-    # Empty State Illustration
     "empty_state": {
-        "prompt": "cyberpunk empty box container, golden open box with neon green interior, empty state illustration, nothing here, minimal, 1:1 illustration, nordic cyber style",
+        "prompt": "minimalist empty box icon, sand gold open container with green interior, clean empty state illustration, transparent background, 128x128",
         "width": 128, "height": 128, "steps": 20,
-        "filename": "empty_state.png",
+        "filename": "empty_states/empty_state.png",
         "description": "Empty State"
     },
 
-    # Success Celebration
     "success_celebration": {
-        "prompt": "cyberpunk success confetti explosion, golden particles with neon green sparkles, celebration effect, achievement unlocked, 1:1 illustration, nordic cyber style",
+        "prompt": "minimalist success particles, sand gold sparkles with green glow, clean celebration effect, transparent background, 128x128",
         "width": 128, "height": 128, "steps": 20,
-        "filename": "success_celebration.png",
+        "filename": "status/success_celebration.png",
         "description": "Success Celebration"
     },
 
-    # Error Alert
     "error_alert": {
-        "prompt": "cyberpunk error warning symbol, golden exclamation mark in triangle with red neon glow, alert badge, warning sign, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "error_alert.png",
+        "prompt": "minimalist error exclamation mark in triangle, sand gold with red glow, clean warning symbol, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "empty_states/error_alert.png",
         "description": "Error Alert"
     },
 
-    # Info Icon
     "info_icon": {
-        "prompt": "cyberpunk information symbol, golden letter i in circle with neon blue glow, help icon, information badge, 1:1 icon, nordic cyber style",
-        "width": 64, "height": 64, "steps": 20,
-        "filename": "info_icon.png",
+        "prompt": "minimalist information i in circle, sand gold with blue glow, clean help symbol, transparent background, 128x128",
+        "width": 128, "height": 128, "steps": 20,
+        "filename": "decorative/info_icon.png",
         "description": "Info Icon"
-    },
-
-    # External Link
-    "external_link": {
-        "prompt": "cyberpunk external link arrow, golden arrow pointing up-right with neon green glow, new tab symbol, hyperlink icon, 1:1 icon, nordic cyber style",
-        "width": 48, "height": 48, "steps": 20,
-        "filename": "external_link.png",
-        "description": "External Link"
     },
 }
 

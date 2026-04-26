@@ -75,7 +75,7 @@
 /* Hover-Effekt für Navigation Buttons */
 .nav-btn:hover .nav-icon {
     transform: scale(1.1) translateY(-2px);
-    filter: drop-shadow(0 4px 8px rgba(212, 196, 168, 0.3));
+    filter: drop-shadow(0 4px 8px rgba(196, 168, 124, 0.15));
 }
 
 /* Active State */
@@ -171,7 +171,7 @@
 
 .stat-card:hover .icon {
     transform: scale(1.15) translateY(-4px);
-    filter: drop-shadow(0 8px 16px rgba(212, 196, 168, 0.4));
+    filter: drop-shadow(0 8px 16px rgba(196, 168, 124, 0.2));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -189,7 +189,7 @@
 
 .feature-card:hover .feature-icon {
     transform: scale(1.1) translateY(-4px);
-    filter: drop-shadow(0 8px 16px rgba(212, 196, 168, 0.3));
+    filter: drop-shadow(0 8px 16px rgba(196, 168, 124, 0.15));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -320,7 +320,7 @@
 
 .header-brand:hover .header-logo {
     transform: scale(1.05);
-    filter: drop-shadow(0 6px 12px rgba(212, 196, 168, 0.3));
+    filter: drop-shadow(0 6px 12px rgba(196, 168, 124, 0.15));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -360,7 +360,7 @@
 
 .btn-icon:hover .icon {
     transform: scale(1.15);
-    filter: drop-shadow(0 4px 8px rgba(212, 196, 168, 0.3));
+    filter: drop-shadow(0 4px 8px rgba(196, 168, 124, 0.15));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -468,11 +468,11 @@
     }
 
     .nav-btn:hover .nav-icon {
-        filter: drop-shadow(0 4px 8px rgba(212, 196, 168, 0.5)) brightness(1.15);
+        filter: drop-shadow(0 4px 8px rgba(196, 168, 124, 0.25)) brightness(1.15);
     }
 
     .stat-card:hover .icon {
-        filter: drop-shadow(0 8px 16px rgba(212, 196, 168, 0.6)) brightness(1.2);
+        filter: drop-shadow(0 8px 16px rgba(196, 168, 124, 0.3)) brightness(1.2);
     }
 }
 

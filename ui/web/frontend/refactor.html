@@ -57,9 +57,14 @@
                     <input 
                         type="text" 
                         id="filePath" 
+                        list="refactorFileList"
                         placeholder="/home/schaf/projects/glitchhunter/src/example.py"
+                        onclick="this.showPicker()"
                         required
                     >
+                    <datalist id="refactorFileList">
+                        <option value="/home/schaf/projects/glitchhunter">🔄 Lädt Projekte...</option>
+                    </datalist>
                 </div>
                 <button type="submit" class="btn btn-primary">🔍 Analysieren</button>
             </form>

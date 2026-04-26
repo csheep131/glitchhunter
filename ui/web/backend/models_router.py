@@ -59,6 +59,14 @@ class LoadModelResponse(BaseModel):
     model_id: str
 
 
+class UpdateModelPathResponse(BaseModel):
+    """Response für Pfad-Aktualisierung."""
+    success: bool
+    message: str
+    model_id: str
+    path: str
+
+
 class HealthCheckResponse(BaseModel):
     """Health-Check-Response."""
     model_id: str
@@ -78,6 +86,9 @@ class ModelStatisticsResponse(BaseModel):
 
 
 # ============== Endpoints ==============
+
+# WICHTIG: Statische Pfade VOR /{model_id} definieren,
+# sonst greift FastAPIs Route-Matching fälschlicherweise auf {model_id} zu!
 
 @router.get("", response_model=List[ModelResponse])
 async def get_all_models():
@@ -168,6 +179,94 @@ async def get_remote_models():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/by_stack", response_model=Dict[str, List[Dict[str, Any]]])
+async def get_models_by_stack():
+    """Alle lokalen Modelle nach Stack gruppiert abrufen."""
+    try:
+        manager = get_model_manager()
+        return manager.get_available_models_by_stack()
+    except Exception as e:
+        logger.error(f"Fehler beim Laden der Modelle nach Stack: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/statistics", response_model=ModelStatisticsResponse)
+async def get_model_statistics():
+    """Modell-Statistiken abrufen."""
+    try:
+        manager = get_model_manager()
+        stats = manager.get_model_statistics()
+        
+        return ModelStatisticsResponse(**stats)
+    except Exception as e:
+        logger.error(f"Fehler beim Laden der Statistiken: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/llama_status")
+async def get_llama_status():
+    """Prüft ob llama.cpp Server läuft und gibt VRAM-Status."""
+    try:
+        import subprocess
+        import os
+        
+        result = {
+            "llama_running": False,
+            "llama_pid": None,
+            "vram_total_mb": 0,
+            "vram_used_mb": 0,
+            "vram_free_mb": 0,
+            "vram_usage_pct": 0,
+            "gpu_name": "",
+            "loaded_model": None,
+        }
+        
+        # Prüfe ob llama.cpp Prozess läuft
+        try:
+            ps = subprocess.run(
+                ["pgrep", "-a", "llama"],
+                capture_output=True, text=True, timeout=5
+            )
+            if ps.returncode == 0:
+                lines = ps.stdout.strip().split('\n')
+                for line in lines:
+                    if 'llama' in line.lower() and ('server' in line.lower() or 'main' in line.lower()):
+                        parts = line.split()
+                        result["llama_running"] = True
+                        result["llama_pid"] = int(parts[0]) if parts else None
+                        # Versuche Modellnamen aus Kommandozeile zu extrahieren
+                        for i, p in enumerate(parts):
+                            if p in ['-m', '--model'] and i + 1 < len(parts):
+                                result["loaded_model"] = parts[i + 1].split('/')[-1]
+                        break
+        except Exception as e:
+            logger.debug(f"pgrep llama fehlgeschlagen: {e}")
+        
+        # nvidia-smi für VRAM
+        try:
+            smi = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name,memory.total,memory.used,memory.free,utilization.gpu",
+                 "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=10
+            )
+            if smi.returncode == 0:
+                line = smi.stdout.strip().split('\n')[0]
+                parts = [p.strip() for p in line.split(',')]
+                if len(parts) >= 4:
+                    result["gpu_name"] = parts[0]
+                    result["vram_total_mb"] = float(parts[1])
+                    result["vram_used_mb"] = float(parts[2])
+                    result["vram_free_mb"] = float(parts[3])
+                    result["vram_usage_pct"] = round(float(parts[2]) / float(parts[1]) * 100, 1) if float(parts[1]) > 0 else 0
+        except Exception as e:
+            logger.debug(f"nvidia-smi fehlgeschlagen: {e}")
+        
+        return result
+    except Exception as e:
+        logger.error(f"Fehler beim LLaMA-Status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{model_id}", response_model=ModelResponse)
 async def get_model(model_id: str):
     """Modell-Details abrufen."""
@@ -232,16 +331,27 @@ async def unload_model(request: LoadModelRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/statistics", response_model=ModelStatisticsResponse)
-async def get_model_statistics():
-    """Modell-Statistiken abrufen."""
+class UpdateModelPathRequest(BaseModel):
+    """Request zum Aktualisieren eines Modell-Pfads."""
+    model_id: str = Field(..., description="Modell-ID")
+    path: str = Field(..., description="Neuer Pfad zum Modell")
+
+
+@router.put("/{model_id}/path", response_model=UpdateModelPathResponse)
+async def update_model_path(model_id: str, request: UpdateModelPathRequest):
+    """Modell-Pfad aktualisieren."""
     try:
         manager = get_model_manager()
-        stats = manager.get_model_statistics()
-        
-        return ModelStatisticsResponse(**stats)
+        success = manager.update_model_path(model_id, request.path)
+
+        return UpdateModelPathResponse(
+            success=success,
+            message=f"Modell-Pfad für {model_id} {'aktualisiert' if success else 'konnte nicht aktualisiert werden'}",
+            model_id=model_id,
+            path=request.path,
+        )
     except Exception as e:
-        logger.error(f"Fehler beim Laden der Statistiken: {e}")
+        logger.error(f"Fehler beim Aktualisieren des Modell-Pfads: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -263,21 +373,3 @@ async def check_model_health(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/statistics", response_model=ModelStatisticsResponse)
-async def get_model_statistics():
-    """Modell-Statistiken abrufen."""
-    try:
-        manager = get_model_manager()
-        stats = manager.get_model_statistics()
-        
-        return ModelStatisticsResponse(
-            total_local=stats["total_local"],
-            total_remote=stats["total_remote"],
-            local_loaded=stats["local_loaded"],
-            remote_available=stats["remote_available"],
-            total_vram_usage_mb=stats["total_vram_usage_mb"],
-            total_load_count=stats["total_load_count"],
-        )
-    except Exception as e:
-        logger.error(f"Fehler beim Laden der Statistiken: {e}")
-        raise HTTPException(status_code=500, detail=str(e))

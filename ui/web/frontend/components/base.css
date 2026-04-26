@@ -10,13 +10,13 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-    /* Hauptfarben - Nordic/Cyber Palette */
-    --color-sand: #d4c4a8;
+    /* Hauptfarben - Clean White + Sand Accents */
+    --color-sand: #c4a87c;
     --color-sand-light: #e8dcc8;
-    --color-sand-dark: #b8a890;
-    --color-gold: #c9b896;
-    --color-gold-light: #dcd0b8;
-    --color-gold-dark: #a89878;
+    --color-sand-dark: #a89060;
+    --color-gold: #c4a87c;
+    --color-gold-light: #f0e8d8;
+    --color-gold-dark: #8b7355;
     
     /* Akzentfarben */
     --color-green: #10b981;
@@ -28,29 +28,30 @@
     --color-orange: #f59e0b;
     --color-orange-dark: #d97706;
     
-    /* Neutrale Farben */
+    /* Neutrale Farben - Warm White Palette */
     --color-white: #ffffff;
-    --color-gray-50: #f9fafb;
-    --color-gray-100: #f3f4f6;
-    --color-gray-200: #e5e7eb;
-    --color-gray-300: #d1d5db;
+    --color-gray-50: #faf9f7;
+    --color-gray-100: #f5f3f0;
+    --color-gray-200: #e8e4df;
+    --color-gray-300: #d4cfc8;
     --color-gray-400: #9ca3af;
     --color-gray-500: #6b7280;
     --color-gray-600: #4b5563;
     --color-gray-700: #374151;
-    --color-gray-800: #1f2937;
+    --color-gray-800: #1a1a1a;
     --color-gray-900: #111827;
     
-    /* Hintergrund-Verlauf */
-    --bg-gradient: linear-gradient(135deg, var(--color-sand) 0%, var(--color-gold) 100%);
-    --bg-gradient-subtle: linear-gradient(135deg, var(--color-sand-light) 0%, var(--color-gold-light) 100%);
+    /* Hintergrund */
+    --bg-gradient: var(--color-sand);
+    --bg-gradient-subtle: var(--color-gold-light);
+    --bg-body: #faf9f7;
     
-    /* Schatten */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    --shadow-glow: 0 0 20px rgba(212, 196, 168, 0.4);
+    /* Schatten - warmer, subtiler */
+    --shadow-sm: 0 1px 2px 0 rgba(139, 115, 85, 0.06);
+    --shadow-md: 0 2px 8px -1px rgba(139, 115, 85, 0.08), 0 1px 3px -1px rgba(139, 115, 85, 0.04);
+    --shadow-lg: 0 8px 24px -4px rgba(139, 115, 85, 0.1), 0 2px 6px -2px rgba(139, 115, 85, 0.04);
+    --shadow-xl: 0 16px 40px -8px rgba(139, 115, 85, 0.12), 0 4px 12px -4px rgba(139, 115, 85, 0.04);
+    --shadow-glow: 0 0 0 3px rgba(196, 168, 124, 0.15);
     
     /* Border Radius */
     --radius-sm: 4px;
@@ -115,7 +116,7 @@ html {
 
 body {
     font-family: var(--font-family);
-    background: var(--bg-gradient);
+    background: var(--bg-body);
     min-height: 100vh;
     color: var(--color-gray-800);
     line-height: 1.6;
@@ -416,7 +417,7 @@ p {
 .form-textarea:focus {
     outline: none;
     border-color: var(--color-gold);
-    box-shadow: 0 0 0 3px rgba(212, 196, 168, 0.2);
+    box-shadow: 0 0 0 3px rgba(196, 168, 124, 0.15);
 }
 
 .form-textarea {

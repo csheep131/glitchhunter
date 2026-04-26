@@ -54,6 +54,7 @@
             <button class="tab-btn" data-tab="analysis">Analyse</button>
             <button class="tab-btn" data-tab="security">Security</button>
             <button class="tab-btn" data-tab="logging">Logging</button>
+            <button class="tab-btn" data-tab="sshfs">🔗 SSHFS / Remote</button>
         </div>
 
         <!-- Settings Formulare -->
@@ -223,6 +224,94 @@
                     </div>
                 </form>
             </div>
+
+            <!-- SSHFS / Remote -->
+            <div class="settings-panel" id="sshfs-panel">
+                <h2>🔗 SSHFS Remote-Mount</h2>
+                <p class="help-text" style="margin-bottom: 16px;">
+                    Binde Remote-Verzeichnisse via SSHFS ein, um Projekte von anderen Rechnern 
+                    (z.B. <code>sundancer</code>) im WebUI sichtbar zu machen und zu analysieren.
+                </p>
+
+                <!-- Status-Anzeige -->
+                <div id="sshfs-status-card" class="model-card" style="margin-bottom: 20px; padding: 16px;">
+                    <div class="model-header">
+                        <span class="model-title">📡 VerbindungStatus</span>
+                        <span id="sshfs-mount-status" class="model-status status-error">Nicht verbunden</span>
+                    </div>
+                    <div class="model-info" id="sshfs-status-info">
+                        <div class="info-row">
+                            <span class="info-label">Host:</span>
+                            <span class="info-value" id="sshfs-info-host">–</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Remote-Pfad:</span>
+                            <span class="info-value" id="sshfs-info-remote">–</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Mount-Point:</span>
+                            <span class="info-value" id="sshfs-info-mount">–</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Projekte sichtbar:</span>
+                            <span class="info-value" id="sshfs-info-projects">–</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mount-Konfiguration -->
+                <form id="sshfs-form" class="settings-form">
+                    <div class="form-group">
+                        <label for="sshfs-host">Remote-Host:</label>
+                        <input type="text" id="sshfs-host" name="sshfs_host" value="sundancer" placeholder="Hostname oder IP">
+                        <p class="help-text">SSH-Hostname (muss in ~/.ssh/config oder via DNS auflösbar sein)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sshfs-user">SSH-Benutzer:</label>
+                        <input type="text" id="sshfs-user" name="sshfs_user" value="schaf" placeholder="schaf">
+                        <p class="help-text">Benutzername für SSH-Verbindung</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sshfs-remote-path">Remote-Verzeichnis:</label>
+                        <input type="text" id="sshfs-remote-path" name="sshfs_remote_path" value="/home/schaf/projects" placeholder="/home/schaf/projects">
+                        <p class="help-text">Absoluter Pfad zum Projektverzeichnis auf dem Remote-Rechner</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sshfs-mount-point">Lokaler Mount-Point:</label>
+                        <input type="text" id="sshfs-mount-point" name="sshfs_mount_point" value="/mnt/remote/projects" placeholder="/mnt/remote/projects">
+                        <p class="help-text">Pfad im Container, unter dem das Remote-Verzeichnis eingebunden wird</p>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="sshfs-auto-mount" name="sshfs_auto_mount">
+                            <span>Automatisch mounten beim Start</span>
+                        </label>
+                        <p class="help-text">Beim Start von GlitchHunter automatisch das letzte Remote-Verzeichnis einbinden</p>
+                    </div>
+                </form>
+
+                <!-- Aktionen -->
+                <div style="display: flex; gap: 10px; margin-top: 16px;">
+                    <button type="button" id="sshfs-mount-btn" class="btn btn-primary" onclick="sshfsManager.mount()">🔗 Verbinden (Mount)</button>
+                    <button type="button" id="sshfs-unmount-btn" class="btn btn-secondary" onclick="sshfsManager.unmount()" disabled>⛔ Trennen (Unmount)</button>
+                    <button type="button" id="sshfs-refresh-btn" class="btn btn-secondary" onclick="sshfsManager.refreshStatus()">🔄 Status aktualisieren</button>
+                </div>
+
+                <!-- Remote-Projekte Liste -->
+                <div id="sshfs-projects-section" style="margin-top: 24px; display: none;">
+                    <h3>📁 Remote-Projekte</h3>
+                    <div id="sshfs-projects-list" class="models-grid" style="margin-top: 12px;">
+                        <!-- Wird dynamisch gefüllt -->
+                    </div>
+                </div>
+
+                <!-- Fehler-Ausgabe -->
+                <div id="sshfs-error" class="status-message error" style="display: none; margin-top: 16px;"></div>
+            </div>
         </div>
 
         <!-- Action Buttons -->
@@ -263,5 +352,6 @@
     });
 </script>
 <script src="/static/settings.js"></script>
+<script src="/static/sshfs.js"></script>
 </body>
 </html>

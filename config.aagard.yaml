@@ -1,0 +1,196 @@
+# GlitchHunter Konfiguration - aagard Deployment
+# Verwendet lokale Modelle aus /home/schaf/modelle
+# GPU: RTX 3090 (24GB VRAM) - Stack B
+
+hardware:
+  stack_a:
+    name: "aagard - Lokal (GGUF)"
+    vram_limit: 8  # GB
+    cuda_compute: "8.6"
+    mode: "sequential"
+    
+    models:
+      primary:
+        name: "qwen3.5-9b"
+        path: "/app/models/Qwen3.5-9B-UncensoredHauhauCS-Aggressive-Q4_K_M.gguf"
+        context_length: 8192
+        n_gpu_layers: 35
+        n_threads: 8
+      
+      secondary:
+        name: "phi-4-mini"
+        path: "/app/models/phi-4-mini-instruct.Q4_K_M.gguf"
+        context_length: 4096
+        n_gpu_layers: 25
+        n_threads: 6
+    
+    security:
+      enabled: true
+      level: "lite"
+      owasp_top10: true
+      api_security: false
+      attack_scenarios: false
+    
+    inference:
+      max_batch_size: 1
+      parallel_requests: false
+      turbo_quant: true
+      server_port: 8080
+      chat_template: "src/inference/templates/qwen_de.jinja"
+  
+  stack_b:
+    name: "aagard - RTX 3090 (24GB)"
+    vram_limit: 24  # GB
+    cuda_compute: "8.6"
+    mode: "parallel"
+    
+    models:
+      primary:
+        name: "qwen3.5-27b"
+        path: "/app/models/Qwen3.5-27B-Instruct-Q4_K_M.gguf"
+        context_length: 16384
+        n_gpu_layers: 50
+        n_threads: 12
+      
+      secondary:
+        name: "deepseek-v3.2-small"
+        path: "/app/models/DeepSeek-V3.2-Small-Q4_K_M.gguf"
+        context_length: 8192
+        n_gpu_layers: 40
+        n_threads: 10
+    
+    security:
+      enabled: true
+      level: "full"
+      owasp_top10: true
+      api_security: true
+      attack_scenarios: true
+    
+    inference:
+      max_batch_size: 4
+      parallel_requests: true
+      turbo_quant: true
+      server_port: 8081
+
+ai_logging:
+  enabled: false
+  directory: "ai_logs"
+  max_files: 100
+  log_requests: true
+  log_responses: true
+  log_prompts: true
+  log_full_response: true
+
+prefilter:
+  enabled: true
+  semgrep:
+    enabled: true
+    rules:
+      - "security"
+      - "correctness"
+      - "performance"
+    custom_rules_path: "src/security/rules"
+  ast:
+    enabled: true
+    languages:
+      - "python"
+      - "javascript"
+      - "typescript"
+      - "go"
+      - "java"
+  complexity:
+    enabled: true
+    max_cyclomatic: 10
+    max_cognitive: 20
+    max_nesting: 4
+    tool: "radon"
+
+agent:
+  states:
+    - "analyzer"
+    - "verifier"
+    - "sandbox_executor"
+    - "patch_generator"
+    - "finalizer"
+  max_iterations: 5
+  timeout_per_state: 300
+  max_hypothesis_candidates: 50
+  sandbox:
+    enabled: true
+    docker_image: "python:3.11-slim"
+    network_disabled: true
+    timeout: 60
+
+mapper:
+  enabled: true
+  use_ctags: true
+  use_tree_sitter: true
+  symbol_graph: true
+  repomix:
+    enabled: true
+    output_format: "xml"
+
+cache:
+  enabled: true
+  symbol_graph_persist: true
+  persist_path: ".glitchhunter/cache/symbol_graph.pkl"
+  auto_invalidate: true
+  auto_persist: true
+  redis:
+    enabled: false
+    host: "localhost"
+    port: 6379
+    ttl_days: 7
+    key_prefix: "symbol_graph"
+
+embeddings:
+  model: "sentence-transformers/all-MiniLM-L6-v2"
+  cache_dir: ".glitchhunter/embeddings"
+  device: null
+
+learned_rules:
+  vector_db: "qdrant"
+  collection: "learned_rules"
+  auto_learn: true
+  min_similarity: 0.7
+  top_k: 5
+  qdrant:
+    host: "localhost"
+    port: 6333
+    https: false
+    timeout: 30
+  chromadb:
+    persist_dir: ".glitchhunter/chroma"
+    anonymized_telemetry: false
+
+api:
+  host: "0.0.0.0"
+  port: 6262
+  debug: false
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8080"
+    - "http://localhost:6262"
+  rate_limit:
+    enabled: true
+    requests_per_minute: 60
+  auth:
+    enabled: false
+    api_key_header: "X-API-Key"
+
+remote_inference:
+  enabled: false
+
+mcp_integration:
+  enabled: false
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/glitchhunter.log"
+  max_size_mb: 100
+  backup_count: 5
+  stack_a:
+    level: "DEBUG"
+  stack_b:
+    level: "DEBUG"

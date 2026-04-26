@@ -655,6 +655,51 @@ class Config:
         """
         return "stack_a"
 
+    def get_model_path(self, stack_name: str, model_role: str) -> Optional[str]:
+        """
+        Get model path for a specific stack and role.
+        
+        Checks environment variables first, then falls back to config.yaml.
+        
+        Supported environment variables:
+        - GLITCHHUNTER_MODEL_PRIMARY / GLITCHHUNTER_MODEL_SECONDARY (global)
+        - GLITCHHUNTER_STACK_A_MODEL_PRIMARY / GLITCHHUNTER_STACK_A_MODEL_SECONDARY
+        - GLITCHHUNTER_STACK_B_MODEL_PRIMARY / GLITCHHUNTER_STACK_B_MODEL_SECONDARY
+        
+        Args:
+            stack_name: Name of the stack (e.g., "stack_a")
+            model_role: Model role (e.g., "primary", "secondary")
+            
+        Returns:
+            Model path or None
+        """
+        import os
+        
+        # Check stack-specific env vars first
+        env_key = f"GLITCHHUNTER_{stack_name.upper()}_MODEL_{model_role.upper()}"
+        env_path = os.environ.get(env_key)
+        if env_path:
+            logger.info(f"Model path for {stack_name}/{model_role} from env var {env_key}: {env_path}")
+            return env_path
+        
+        # Check global env vars
+        global_env_key = f"GLITCHHUNTER_MODEL_{model_role.upper()}"
+        global_env_path = os.environ.get(global_env_key)
+        if global_env_path:
+            logger.info(f"Model path for {stack_name}/{model_role} from global env var {global_env_key}: {global_env_path}")
+            return global_env_path
+        
+        # Fall back to config.yaml
+        if stack_name in self.hardware:
+            hw = self.hardware[stack_name]
+            models = hw.models if hasattr(hw, 'models') else {}
+            if model_role in models:
+                model_data = models[model_role]
+                if isinstance(model_data, dict):
+                    return model_data.get("path")
+        
+        return None
+
     def get_model_download_info(self, model_key: str) -> Optional[ModelDownloadConfig]:
         """
         Get download information for a specific model.

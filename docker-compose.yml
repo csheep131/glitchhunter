@@ -1,0 +1,74 @@
+# GlitchHunter v3.0 - Docker Compose
+# Einfachstes Deployment: docker compose up -d
+
+services:
+  glitchhunter:
+    build:
+      context: .
+      dockerfile: Dockerfile.slim
+    image: glitchhunter:slim
+    container_name: glitchhunter
+    restart: unless-stopped
+    
+    # Ports
+    ports:
+      - "6262:6262"
+    
+    # Umgebungsvariablen
+    environment:
+      - PYTHONUNBUFFERED=1
+      - GLITCHHUNTER_HOME=/app
+      - GLITCHHUNTER_DATA=/app/data
+      - GLITCHHUNTER_LOGS=/app/logs
+      - GLITCHHUNTER_CACHE=/app/cache
+      # Optional: API-Keys
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+    
+    # Volumes für Persistenz
+    # FUSE für SSHFS
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
+    security_opt:
+      - apparmor=unconfined
+      - seccomp=unconfined
+    
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro  # Konfiguration (read-only)
+      - /home/schaf:/home/schaf:ro          # Modelle + Projekte (read-only)
+      - /home/schaf/.ssh:/root/.ssh:ro      # SSH-Keys für SSHFS
+      - gh-data:/app/data                   # Daten (Settings, History)
+      - gh-logs:/app/logs                   # Logs
+      - gh-cache:/app/cache                 # Cache
+      - gh-reports:/app/reports             # Reports
+    
+    # Health-Check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6262/api/v1/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Ressourcen-Limits (optional)
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+
+# Volumes
+volumes:
+  gh-data:
+    driver: local
+  gh-logs:
+    driver: local
+  gh-cache:
+    driver: local
+  gh-reports:
+    driver: local
